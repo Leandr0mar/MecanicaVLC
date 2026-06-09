@@ -17,7 +17,8 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem('vlc-theme') as Theme;
-    return savedTheme || 'dark';
+    // Aquí cambiamos el valor por defecto a 'light'
+    return savedTheme || 'light';
   });
 
   useEffect(() => {

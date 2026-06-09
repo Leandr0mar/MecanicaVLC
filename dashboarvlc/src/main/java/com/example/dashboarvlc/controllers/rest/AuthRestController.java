@@ -1,6 +1,5 @@
 package com.example.dashboarvlc.controllers.rest;
 
-import com.example.dashboarvlc.controllers.rest.ClienteRegistrationRequest;
 import com.example.dashboarvlc.models.Cliente;
 import com.example.dashboarvlc.models.Usuario;
 import com.example.dashboarvlc.services.ClienteService;

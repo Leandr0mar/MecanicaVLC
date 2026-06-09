@@ -1,8 +1,8 @@
 package com.example.dashboarvlc.services.impl;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
 
 import com.example.dashboarvlc.models.Oferta;
 import com.example.dashboarvlc.repositories.OfertaRepository;
@@ -12,8 +12,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class OfertaServiceImpl implements OfertaService {
-    @Autowired private OfertaRepository ofertaRepository;
+    
+    private final OfertaRepository ofertaRepository;
 
     @Override @Transactional(readOnly = true) public List<Oferta> listarTodas() { return ofertaRepository.findAll(); }
     @Override @Transactional(readOnly = true) public Optional<Oferta> buscarPorId(Long id) { return ofertaRepository.findById(id); }

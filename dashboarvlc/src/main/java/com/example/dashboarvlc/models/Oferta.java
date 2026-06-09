@@ -3,6 +3,7 @@ package com.example.dashboarvlc.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -28,10 +29,10 @@ public class Oferta {
     @NotNull(message = "La fecha de fin es obligatoria")
     private LocalDate fechaFin;
 
+    @JsonIgnore // <-- Evita el error 500 de bucle infinito
     @OneToMany(mappedBy = "oferta", fetch = FetchType.LAZY)
     private List<Producto> productos;
 
-    // Lógica para resolver el método de estado() del UML de forma dinámica
     public boolean estado() {
         LocalDate hoy = LocalDate.now();
         return (!hoy.isBefore(fechaInicio) && !hoy.isAfter(fechaFin));

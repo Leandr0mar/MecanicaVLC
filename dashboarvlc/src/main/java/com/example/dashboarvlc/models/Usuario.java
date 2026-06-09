@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "usuarios")
@@ -28,12 +29,12 @@ public abstract class Usuario {
     private String email;
 
     @NotBlank(message = "La contraseña no puede estar vacía")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // <-- Se recibe, pero NO se expone al frontend
     private String contrasenia;
 
     @Column(nullable = false)
     private Integer rol;
 
-    // Métricas del Dashboard: Usuarios nuevos por mes
     @Column(name = "fecha_registro", updatable = false)
     private LocalDateTime fechaRegistro;
 

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // <-- IMPORTANTE
 
 @Entity
 @Table(name = "historial_stock")
@@ -17,10 +18,9 @@ public class HistorialStock {
     private Integer cantidad;
 
     @NotBlank(message = "El tipo de movimiento no puede estar vacío")
-    @Size(max = 50) // E.g., "ENTRADA", "SALIDA_VENTA", "AJUSTE"
+    @Size(max = 50) // "ENTRADA" o "SALIDA"
     private String tipoMovimiento;
 
-    // Cambiado a LocalDateTime automático para saber el minuto exacto del movimiento
     @Column(name = "fecha_movimiento", updatable = false)
     private LocalDateTime fechaMovimiento;
 
@@ -30,6 +30,8 @@ public class HistorialStock {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_producto", nullable = false)
+    // ESCUDO ANTI BUCLES
+    @JsonIgnoreProperties({"historialStock", "categoria", "proveedor", "hibernateLazyInitializer", "handler"})
     private Producto producto;
 
     @PrePersist

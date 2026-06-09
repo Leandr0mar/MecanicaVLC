@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "productos")
@@ -34,20 +36,29 @@ public class Producto {
     @Min(value = 0, message = "El stock no puede ser negativo")
     private Integer stock;
 
+    // NUEVO CAMPO PARA LA IMAGEN
+    @Column(columnDefinition = "TEXT")
+    private String imagenUrl;
+
+    // ESCUDOS CONTRA BUCLES INFINITOS EN LAS LLAVES FORÁNEAS
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria", nullable = false)
     @NotNull(message = "La categoría es obligatoria")
+    @JsonIgnoreProperties({"productos", "hibernateLazyInitializer", "handler"})
     private Categoria categoria;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_proveedor", nullable = false)
     @NotNull(message = "El proveedor es obligatorio")
+    @JsonIgnoreProperties({"productos", "hibernateLazyInitializer", "handler"})
     private Proveedor proveedor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_oferta")
+    @JsonIgnoreProperties({"productos", "hibernateLazyInitializer", "handler"})
     private Oferta oferta;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<HistorialStock> historialStock;
 }

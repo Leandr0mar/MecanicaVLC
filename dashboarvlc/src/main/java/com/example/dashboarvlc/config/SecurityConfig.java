@@ -44,7 +44,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration config = new CorsConfiguration();
                 config.setAllowedOrigins(List.of("http://localhost:5173"));
-                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);
                 return config;
@@ -55,6 +55,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/categorias/**").authenticated()
                 .requestMatchers("/api/servicios/**").authenticated()
                 .requestMatchers("/api/proveedores/**").authenticated()
+                .requestMatchers("/api/ofertas/").authenticated()
+                .requestMatchers("/api/productos/").authenticated()
+                .requestMatchers("/api/historial-stock/").authenticated()
+                .requestMatchers("/api/citas/**").authenticated()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
@@ -82,7 +86,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration config = new CorsConfiguration();
                 config.setAllowedOrigins(List.of("http://localhost:5173"));
-                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);
                 return config;

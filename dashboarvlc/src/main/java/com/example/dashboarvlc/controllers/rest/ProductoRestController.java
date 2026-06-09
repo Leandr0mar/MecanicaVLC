@@ -3,7 +3,7 @@ package com.example.dashboarvlc.controllers.rest;
 import com.example.dashboarvlc.models.Producto;
 import com.example.dashboarvlc.services.ProductoService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,18 +13,17 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/productos")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true") // Permiso para React
+@RequiredArgsConstructor
 public class ProductoRestController {
 
-    @Autowired
-    private ProductoService productoService;
+    private final ProductoService productoService;
 
-    // 1. Listar catálogo completo (Accesible por los tres actores)
     @GetMapping
     public ResponseEntity<List<Producto>> listarTodos() {
         return ResponseEntity.ok(productoService.listarTodos());
     }
 
-    // 2. Obtener un producto por ID
     @GetMapping("/{id}")
     public ResponseEntity<Producto> buscarPorId(@PathVariable Long id) {
         return productoService.buscarPorId(id)
@@ -32,29 +31,32 @@ public class ProductoRestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. Crear producto (Solo Administrador)
     @PostMapping
     public ResponseEntity<Producto> crearProducto(@Valid @RequestBody Producto producto) {
-        Producto nuevoProducto = productoService.guardar(producto);
-        return new ResponseEntity<>(nuevoProducto, HttpStatus.CREATED);
+        return new ResponseEntity<>(productoService.guardar(producto), HttpStatus.CREATED);
     }
 
-    // 4. Actualizar Stock (¡Dispara automáticamente el HistorialStock por detrás!)
-    // Ideal para cuando el Admin recibe mercadería o el Trabajador descuenta repuestos
+    @PutMapping("/{id}")
+    public ResponseEntity<Producto> actualizarProducto(@PathVariable Long id, @Valid @RequestBody Producto producto) {
+        try {
+            producto.setIdProducto(id);
+            return ResponseEntity.ok(productoService.guardar(producto));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PatchMapping("/{id}/stock")
     public ResponseEntity<Producto> actualizarStock(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
             Integer nuevoStock = (Integer) body.get("nuevoStock");
             String motivo = (String) body.get("motivo");
-            
-            Producto productoActualizado = productoService.actualizarStock(id, nuevoStock, motivo);
-            return ResponseEntity.ok(productoActualizado);
+            return ResponseEntity.ok(productoService.actualizarStock(id, nuevoStock, motivo));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    // 5. Eliminar producto (Solo Administrador)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productoService.eliminar(id);

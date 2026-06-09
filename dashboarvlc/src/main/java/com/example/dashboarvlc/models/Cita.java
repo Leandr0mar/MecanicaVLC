@@ -5,10 +5,9 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalTime;
-
 import com.example.dashboarvlc.models.enums.EstadoCita;
-
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "citas")
@@ -24,35 +23,38 @@ public class Cita {
     @NotNull(message = "La hora es obligatoria")
     private LocalTime hora;
 
-    @NotNull(message = "El estado es obligatorio")
-    @Enumerated(EnumType.STRING) // Guarda el texto (PENDIENTE, COMPLETADA) en la BD
+    @Enumerated(EnumType.STRING)
     private EstadoCita estado;
 
     @Size(max = 500)
     private String observaciones;
 
-    // Métricas del Dashboard: Ingresos por servicios de mano de obra
-    @NotNull(message = "El monto total de la cita es obligatorio")
+    // CAMBIO APLICADO: montoTotal a montoInicial
     @PositiveOrZero
-    private Double montoTotal;
+    @Column(name = "monto_inicial")
+    private Double montoInicial;
 
-    // Métricas del Dashboard: Productividad y tiempos de atención
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaModificacion;
 
+    // ESCUDOS ANTI-BUCLES
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cliente", nullable = false)
+    @JsonIgnoreProperties({"citas", "ordenesCompra", "hibernateLazyInitializer", "handler"})
     private Cliente cliente;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_trabajador")
+    @JsonIgnoreProperties({"citas", "ordenesCompra", "hibernateLazyInitializer", "handler"})
     private Trabajador trabajador;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_servicio", nullable = false)
+    @JsonIgnoreProperties({"citas", "hibernateLazyInitializer", "handler"})
     private Servicio servicio;
 
     @OneToOne(mappedBy = "cita", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"cita", "hibernateLazyInitializer", "handler"})
     private Reseña reseña;
 
     @PrePersist

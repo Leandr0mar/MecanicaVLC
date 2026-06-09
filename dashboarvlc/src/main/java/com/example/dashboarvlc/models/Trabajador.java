@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "trabajadores")
 @Data
@@ -19,9 +21,11 @@ public class Trabajador extends Usuario {
     @NotNull(message = "La disponibilidad es obligatoria")
     private Boolean disponibilidad;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "trabajador", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Cita> citas;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "trabajador", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrdenCompra> ordenesCompra;
 }

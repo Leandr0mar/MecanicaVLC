@@ -3,7 +3,7 @@ package com.example.dashboarvlc.controllers.rest;
 import com.example.dashboarvlc.models.Oferta;
 import com.example.dashboarvlc.services.OfertaService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +12,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/ofertas")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true") // <-- Permiso React
+@RequiredArgsConstructor
 public class OfertaRestController {
 
-    @Autowired private OfertaService ofertaService;
+    private final OfertaService ofertaService;
 
     @GetMapping
     public ResponseEntity<List<Oferta>> listarTodas() {
@@ -28,12 +30,12 @@ public class OfertaRestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping // Solo Admin
+    @PostMapping 
     public ResponseEntity<Oferta> crear(@Valid @RequestBody Oferta oferta) {
         return new ResponseEntity<>(ofertaService.guardar(oferta), HttpStatus.CREATED);
     }
 
-    @PutMapping("/{id}") // Solo Admin
+    @PutMapping("/{id}") 
     public ResponseEntity<Oferta> actualizar(@PathVariable Long id, @Valid @RequestBody Oferta oferta) {
         try {
             oferta.setIdOferta(id);
@@ -43,7 +45,7 @@ public class OfertaRestController {
         }
     }
 
-    @DeleteMapping("/{id}") // Solo Admin
+    @DeleteMapping("/{id}") 
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         ofertaService.eliminar(id);
         return ResponseEntity.noContent().build();
