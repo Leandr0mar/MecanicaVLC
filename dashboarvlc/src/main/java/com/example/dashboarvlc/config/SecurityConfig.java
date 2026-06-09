@@ -2,6 +2,8 @@ package com.example.dashboarvlc.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -10,10 +12,19 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    private final UserDetailsService userDetailsService;
+
+    public SecurityConfig(UserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -26,12 +37,60 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
+    @Order(1)
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
         http
+            .securityMatcher("/api/**")
+            .cors(cors -> cors.configurationSource(request -> {
+                CorsConfiguration config = new CorsConfiguration();
+                config.setAllowedOrigins(List.of("http://localhost:5173"));
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                config.setAllowedHeaders(List.of("*"));
+                config.setAllowCredentials(true);
+                return config;
+            }))
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/categorias/**").authenticated()
+                .requestMatchers("/api/servicios/**").authenticated()
+                .requestMatchers("/api/proveedores/**").authenticated()
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, authException) -> {
+                    res.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    res.setContentType("application/json");
+                    res.setCharacterEncoding("UTF-8");
+                    res.getWriter().write("{\"error\":\"No autorizado\"}");
+                })
+                .accessDeniedHandler((req, res, accessDeniedException) -> {
+                    res.setStatus(HttpStatus.FORBIDDEN.value());
+                    res.setContentType("application/json");
+                    res.setCharacterEncoding("UTF-8");
+                    res.getWriter().write("{\"error\":\"Acceso denegado\"}");
+                })
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .cors(cors -> cors.configurationSource(request -> {
+                CorsConfiguration config = new CorsConfiguration();
+                config.setAllowedOrigins(List.of("http://localhost:5173"));
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                config.setAllowedHeaders(List.of("*"));
+                config.setAllowCredentials(true);
+                return config;
+            }))
             .userDetailsService(userDetailsService)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
-                .requestMatchers("/iniciar-sesion", "/registrar").permitAll()
+                .requestMatchers("/iniciar-sesion", "/registrar", "/api/auth/**").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/trabajador/**").hasRole("TRABAJADOR")
                 .requestMatchers("/cliente/**").hasRole("CLIENTE")
@@ -40,7 +99,7 @@ public class SecurityConfig {
             .formLogin(form -> form
                 .loginPage("/iniciar-sesion")
                 .loginProcessingUrl("/iniciar-sesion")
-                .successHandler(new CustomAuthenticationSuccessHandler())
+                .defaultSuccessUrl("/admin/dashboard", true)
                 .failureUrl("/iniciar-sesion?error=true")
                 .permitAll()
             )

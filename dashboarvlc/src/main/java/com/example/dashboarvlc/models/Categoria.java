@@ -3,6 +3,7 @@ package com.example.dashboarvlc.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnore; // <-- IMPORTANTE AÑADIR ESTO
 import java.util.List;
 
 @Entity
@@ -21,10 +22,10 @@ public class Categoria {
     @Size(max = 255, message = "La descripción no debe superar los 255 caracteres")
     private String descripcion;
 
+    @JsonIgnore // <-- EVITA EL ERROR 500 DE BUCLE INFINITO
     @OneToMany(mappedBy = "categoria", fetch = FetchType.LAZY)
     private List<Producto> productos;
 
     public Categoria() {
     }
-    
 }

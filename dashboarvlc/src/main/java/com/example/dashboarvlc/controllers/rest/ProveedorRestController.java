@@ -3,7 +3,7 @@ package com.example.dashboarvlc.controllers.rest;
 import com.example.dashboarvlc.models.Proveedor;
 import com.example.dashboarvlc.services.ProveedorService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +12,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/proveedores")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@RequiredArgsConstructor
 public class ProveedorRestController {
 
-    @Autowired private ProveedorService proveedorService;
+    private final ProveedorService proveedorService;
 
     @GetMapping
     public ResponseEntity<List<Proveedor>> listarTodos() {
@@ -28,12 +30,12 @@ public class ProveedorRestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping // Solo Admin
+    @PostMapping
     public ResponseEntity<Proveedor> crear(@Valid @RequestBody Proveedor proveedor) {
         return new ResponseEntity<>(proveedorService.guardar(proveedor), HttpStatus.CREATED);
     }
 
-    @PutMapping("/{id}") // Solo Admin
+    @PutMapping("/{id}")
     public ResponseEntity<Proveedor> actualizar(@PathVariable Long id, @Valid @RequestBody Proveedor proveedor) {
         try {
             proveedor.setIdProveedor(id);
@@ -43,7 +45,7 @@ public class ProveedorRestController {
         }
     }
 
-    @DeleteMapping("/{id}") // Solo Admin
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         proveedorService.eliminar(id);
         return ResponseEntity.noContent().build();

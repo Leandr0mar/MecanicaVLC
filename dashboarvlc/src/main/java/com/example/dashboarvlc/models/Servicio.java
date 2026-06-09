@@ -5,6 +5,8 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "servicios")
 @Data
@@ -25,6 +27,11 @@ public class Servicio {
     @PositiveOrZero(message = "El precio inicial debe ser cero o un valor positivo")
     private Double precioInicial;
 
+    @NotNull(message = "La duración estimada es obligatoria")
+    @Positive(message = "La duración estimada debe ser mayor que cero")
+    private Integer duracionEstimadaMinutos;
+    
+    @JsonIgnore
     @OneToMany(mappedBy = "servicio", fetch = FetchType.LAZY)
     private List<Cita> citas;
 }

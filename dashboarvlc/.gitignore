@@ -31,3 +31,17 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+# Visual Studio e Intellisense
+.vs/
+Build/
+out/
+x64/
+Debug/
+Release/
+*.user
+*.aps
+*.suo
+
+**/application.properties

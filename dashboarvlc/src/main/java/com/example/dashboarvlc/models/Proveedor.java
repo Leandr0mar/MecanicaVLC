@@ -3,6 +3,7 @@ package com.example.dashboarvlc.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 
 @Entity
@@ -26,6 +27,7 @@ public class Proveedor {
     @Size(max = 20, message = "El teléfono no debe superar los 20 caracteres")
     private String telefono;
 
+    @JsonIgnore // <-- Evita el bucle infinito al traer el proveedor
     @OneToMany(mappedBy = "proveedor", fetch = FetchType.LAZY)
     private List<Producto> productos;
 }
