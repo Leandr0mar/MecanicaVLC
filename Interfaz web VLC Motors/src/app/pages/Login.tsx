@@ -143,9 +143,9 @@ export const LoginPage = () => {
                 <div className="text-xs text-muted-foreground">
                   <p className="font-medium text-foreground mb-1">Cuentas de prueba:</p>
                   <div className="space-y-1">
-                    <p>👤 Cliente: <span className="text-accent">cliente@vlc.com</span> / <span className="text-accent">cliente123</span></p>
-                    <p>🔧 Trabajador: <span className="text-accent">trabajador@vlc.com</span> / <span className="text-accent">trabajador123</span></p>
-                    <p>⚙️ Admin: <span className="text-accent">admin@vlc.com</span> / <span className="text-accent">admin123</span></p>
+                    <p>👤 Cliente: <span className="text-accent">vladimir@gmail.com</span> / <span className="text-accent">@Ismael123</span></p>
+                    <p>🔧 Trabajador: <span className="text-accent">david@gmail.com</span> / <span className="text-accent">David123</span></p>
+                    <p>⚙️ Admin: <span className="text-accent">leandro22.admin@vlc.com</span> / <span className="text-accent">LeandrOmar</span></p>
                   </div>
                 </div>
               </div>
