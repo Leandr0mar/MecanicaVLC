@@ -96,4 +96,24 @@ public class CitaRestController {
                 .toList();
         return ResponseEntity.ok(tareas);
     }
+
+@PatchMapping("/{id}/observaciones")
+    public ResponseEntity<?> guardarObservacion(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            String observacion = body.get("observacion");
+            
+            // Ejecutamos el guardado en la base de datos
+            citaService.agregarObservacion(id, observacion);
+            
+            // Retornamos un JSON simple para evitar errores de serialización (Lazy Loading)
+            return ResponseEntity.ok(Map.of("mensaje", "Observación guardada correctamente"));
+            
+        } catch (Exception e) {
+            // Imprime el error exacto en la consola de Spring Boot si algo falla internamente
+            e.printStackTrace(); 
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error interno: " + e.getMessage()));
+        }
+    }
+
 }

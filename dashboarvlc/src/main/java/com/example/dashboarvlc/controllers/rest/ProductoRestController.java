@@ -37,12 +37,16 @@ public class ProductoRestController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Producto> actualizarProducto(@PathVariable Long id, @Valid @RequestBody Producto producto) {
+    public ResponseEntity<?> actualizarProducto(@PathVariable Long id, @Valid @RequestBody Producto producto) {
         try {
             producto.setIdProducto(id);
             return ResponseEntity.ok(productoService.guardar(producto));
         } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+            // Imprime el error real en tu consola del backend
+            e.printStackTrace(); 
+            // Devuelve un error 500 con el mensaje para que sepas qué falló
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error interno al actualizar: " + e.getMessage());
         }
     }
 

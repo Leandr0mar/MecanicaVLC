@@ -1,259 +1,380 @@
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, DollarSign, Users, Calendar } from 'lucide-react';
-import { formatCurrencyCompact } from '../../utils/currency';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, DollarSign, Wrench, Calendar, Star } from 'lucide-react';
+import { formatCurrency } from '../../utils/currency';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
+import { API_URL } from '../../context/AuthContext';
 
-const ventasData = [
-  { mes: 'Ene', ventas: 4200 },
-  { mes: 'Feb', ventas: 3800 },
-  { mes: 'Mar', ventas: 5100 },
-  { mes: 'Abr', ventas: 4600 },
-  { mes: 'May', ventas: 5800 },
-];
-
-const citasData = [
-  { dia: 'Lun', citas: 12 },
-  { dia: 'Mar', citas: 15 },
-  { dia: 'Mié', citas: 10 },
-  { dia: 'Jue', citas: 18 },
-  { dia: 'Vie', citas: 14 },
-  { dia: 'Sáb', citas: 8 },
-];
-
-const productosData = [
-  { nombre: 'Aceite', valor: 350 },
-  { nombre: 'Filtros', valor: 220 },
-  { nombre: 'Bujías', valor: 180 },
-  { nombre: 'Frenos', valor: 280 },
-  { nombre: 'Otros', valor: 150 },
-];
-
-const COLORS = ['#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd', '#d4af37'];
+const COLORS = ['#d4af37', '#3b82f6', '#10b981', '#f59e0b', '#6366f1'];
+const STATUS_COLORS: { [key: string]: string } = {
+  'PENDIENTE': '#f59e0b',
+  'EN_PROGRESO': '#3b82f6',
+  'COMPLETADA': '#10b981',
+  'CANCELADA': '#ef4444'
+};
 
 export const Reportes = () => {
+  const [loading, setLoading] = useState(true);
+  
+  // Estados para las métricas
+  const [metricas, setMetricas] = useState({
+    ingresosTotales: 0,
+    totalCitasMes: 0,
+    serviciosCompletados: 0,
+    promedioSatisfaccion: '0.0',
+    totalResenas: 0
+  });
+
+  // Estados para los gráficos
+  const [ventasMensuales, setVentasMensuales] = useState<any[]>([]);
+  const [distribucionCitas, setDistribucionCitas] = useState<any[]>([]);
+  const [topProductos, setTopProductos] = useState<any[]>([]);
+  const [topServicios, setTopServicios] = useState<any[]>([]);
+
+  useEffect(() => {
+    cargarMetricas();
+  }, []);
+
+  const cargarMetricas = async () => {
+    try {
+      setLoading(true);
+      
+      // Consultamos todos los datos necesarios en paralelo
+      const [resOrdenes, resCitas, resResenas] = await Promise.all([
+        fetch(`${API_URL}/api/ordenes`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/citas`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/reseñas`, { credentials: 'include' })
+      ]);
+
+      if (resOrdenes.status === 401) return (window.location.href = '/iniciar-sesion');
+
+      const ordenes = await resOrdenes.json();
+      const citas = await resCitas.json();
+      const resenas = await resResenas.json();
+
+      const hoy = new Date();
+      const mesActual = hoy.getMonth();
+      const añoActual = hoy.getFullYear();
+
+      // --- 1. CÁLCULO DE MÉTRICAS GLOBALES ---
+      const ordenesPagadas = ordenes.filter((o: any) => o.estadoRecojo === 'RECOGIDO');
+      const citasCompletadas = citas.filter((c: any) => c.estado === 'COMPLETADA');
+      
+      const ingresosOrdenes = ordenesPagadas.reduce((sum: number, o: any) => sum + o.montoTotal, 0);
+      const ingresosCitas = citasCompletadas.reduce((sum: number, c: any) => sum + (c.montoInicial || 0), 0);
+      
+      const citasEsteMes = citas.filter((c: any) => {
+        const fechaCita = new Date(c.fecha + 'T00:00:00');
+        return fechaCita.getMonth() === mesActual && fechaCita.getFullYear() === añoActual;
+      });
+
+      const promSat = resenas.length > 0 
+        ? (resenas.reduce((sum: number, r: any) => sum + r.calificacion, 0) / resenas.length).toFixed(1) 
+        : '0.0';
+
+      setMetricas({
+        ingresosTotales: ingresosOrdenes + ingresosCitas,
+        totalCitasMes: citasEsteMes.length,
+        serviciosCompletados: citasCompletadas.length,
+        promedioSatisfaccion: promSat,
+        totalResenas: resenas.length
+      });
+
+      // --- 2. GRÁFICO: VENTAS MENSUALES (Últimos 6 meses) ---
+      const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(añoActual, mesActual - i, 1);
+        return { mesNum: d.getMonth(), año: d.getFullYear(), nombre: d.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(), ingresos: 0 };
+      }).reverse();
+
+      // Sumar Órdenes a los meses
+      ordenesPagadas.forEach((o: any) => {
+        if (!o.fechaPago) return;
+        const fecha = new Date(o.fechaPago);
+        const mesIndex = ultimos6Meses.findIndex(m => m.mesNum === fecha.getMonth() && m.año === fecha.getFullYear());
+        if (mesIndex !== -1) ultimos6Meses[mesIndex].ingresos += o.montoTotal;
+      });
+
+      // Sumar Citas (Servicios) a los meses
+      citasCompletadas.forEach((c: any) => {
+        const fecha = new Date(c.fecha + 'T00:00:00');
+        const mesIndex = ultimos6Meses.findIndex(m => m.mesNum === fecha.getMonth() && m.año === fecha.getFullYear());
+        if (mesIndex !== -1) ultimos6Meses[mesIndex].ingresos += (c.montoInicial || 0);
+      });
+
+      setVentasMensuales(ultimos6Meses);
+
+      // --- 3. GRÁFICO: DISTRIBUCIÓN DE ESTADO DE CITAS ---
+      const conteoEstados = citas.reduce((acc: any, cita: any) => {
+        acc[cita.estado] = (acc[cita.estado] || 0) + 1;
+        return acc;
+      }, {});
+
+      const formatEstados = Object.keys(conteoEstados).map(key => ({
+        name: key.replace('_', ' '),
+        value: conteoEstados[key],
+        color: STATUS_COLORS[key] || '#9ca3af'
+      }));
+      setDistribucionCitas(formatEstados);
+
+      // --- 4. GRÁFICO: TOP 5 PRODUCTOS MÁS VENDIDOS ---
+      const mapProductos: { [key: string]: number } = {};
+      ordenesPagadas.forEach((o: any) => {
+        o.items?.forEach((item: any) => {
+          const nombre = item.producto?.nombre || 'Desconocido';
+          mapProductos[nombre] = (mapProductos[nombre] || 0) + item.cantidad;
+        });
+      });
+      const topProdList = Object.keys(mapProductos)
+        .map(nombre => ({ nombre, cantidad: mapProductos[nombre] }))
+        .sort((a, b) => b.cantidad - a.cantidad)
+        .slice(0, 5); // Tomamos solo los 5 principales
+      setTopProductos(topProdList);
+
+      // --- 5. GRÁFICO: TOP SERVICIOS MÁS SOLICITADOS ---
+      const mapServicios: { [key: string]: number } = {};
+      citas.forEach((c: any) => {
+        const nombre = c.servicio?.nombreServicio || 'Desconocido';
+        mapServicios[nombre] = (mapServicios[nombre] || 0) + 1;
+      });
+      const topServList = Object.keys(mapServicios)
+        .map(nombre => ({ nombre, cantidad: mapServicios[nombre] }))
+        .sort((a, b) => b.cantidad - a.cantidad)
+        .slice(0, 5);
+      setTopServicios(topServList);
+
+    } catch (error) {
+      toast.error('Error al procesar las métricas de reportes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8 text-center text-muted-foreground">Analizando datos y generando reportes...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-2 text-foreground">Panel de Reportes</h2>
-        <p className="text-muted-foreground">Visualización de métricas y estadísticas</p>
+        <h2 className="mb-2 text-foreground">Panel de Reportes Operativos</h2>
+        <p className="text-muted-foreground">Métricas financieras y rendimiento del taller</p>
       </div>
 
+      {/* --- TARJETAS DE MÉTRICAS --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <Card hover className="group">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Ventas Totales</p>
-                  <h3 className="text-accent">{formatCurrencyCompact(23500)}</h3>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Ingresos Globales</p>
+                  <h3 className="text-accent text-2xl font-black">{formatCurrency(metricas.ingresosTotales)}</h3>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <DollarSign className="text-accent" size={24} />
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-1 text-xs text-green-400">
-                <TrendingUp size={14} />
-                <span>+12% vs mes anterior</span>
+              <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+                <span>Ventas de productos y servicios</span>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
           <Card hover className="group">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Citas del Mes</p>
-                  <h3 className="text-accent">156</h3>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Citas este Mes</p>
+                  <h3 className="text-primary text-2xl font-black">{metricas.totalCitasMes}</h3>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Calendar className="text-primary" size={24} />
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-1 text-xs text-green-400">
-                <TrendingUp size={14} />
-                <span>+8% vs mes anterior</span>
+              <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+                <span>Agendadas en curso</span>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
           <Card hover className="group">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Clientes Activos</p>
-                  <h3 className="text-accent">342</h3>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Servicios Finalizados</p>
+                  <h3 className="text-green-500 text-2xl font-black">{metricas.serviciosCompletados}</h3>
                 </div>
-                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Users className="text-primary" size={24} />
+                <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Wrench className="text-green-500" size={24} />
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-1 text-xs text-green-400">
-                <TrendingUp size={14} />
-                <span>+15% vs mes anterior</span>
+              <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+                <span>Histórico total</span>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.3 }}>
           <Card hover className="group">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Satisfacción</p>
-                  <h3 className="text-accent">4.8/5</h3>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Satisfacción</p>
+                  <h3 className="text-yellow-500 text-2xl font-black">{metricas.promedioSatisfaccion} / 5</h3>
                 </div>
-                <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <TrendingUp className="text-accent" size={24} />
+                <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Star className="text-yellow-500" size={24} />
                 </div>
               </div>
               <div className="mt-3 text-xs text-muted-foreground">
-                Basado en 89 reseñas
+                Basado en {metricas.totalResenas} reseñas de clientes
               </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
 
+      {/* --- GRÁFICOS Y DIAGRAMAS --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
-        >
-        <Card hover>
-          <CardHeader>
-            <CardTitle>Ventas Mensuales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={ventasData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27293d" />
-                <XAxis dataKey="mes" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #d4af37' }}
-                  labelStyle={{ color: '#e8e9ed' }}
-                />
-                <Bar dataKey="ventas" fill="#d4af37" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Citas Semanales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={citasData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27293d" />
-                <XAxis dataKey="dia" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #1e3a8a' }}
-                  labelStyle={{ color: '#e8e9ed' }}
-                />
-                <Line type="monotone" dataKey="citas" stroke="#1e3a8a" strokeWidth={3} dot={{ fill: '#1e3a8a', r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        
+        {/* GRÁFICO 1: Ingresos Mensuales */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.4 }}>
+          <Card hover>
+            <CardHeader>
+              <CardTitle>Ingresos Consolidados (Últimos 6 meses)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={ventasMensuales}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27293d" vertical={false} />
+                  <XAxis dataKey="nombre" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `S/ ${value}`} />
+                  <Tooltip
+                    cursor={{ fill: '#ffffff10' }}
+                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #d4af37', borderRadius: '8px' }}
+                    labelStyle={{ color: '#e8e9ed', fontWeight: 'bold', marginBottom: '4px' }}
+                    formatter={(value: number) => [formatCurrency(value), 'Ingresos']}
+                  />
+                  <Bar dataKey="ingresos" fill="#d4af37" radius={[6, 6, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.6 }}
-        >
-        <Card hover>
-          <CardHeader>
-            <CardTitle>Distribución de Productos Vendidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={productosData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ nombre, percent }) => `${nombre} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="valor"
-                >
-                  {productosData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #d4af37' }}
-                  labelStyle={{ color: '#e8e9ed' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* GRÁFICO 2: Estado del Flujo de Citas */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.5 }}>
+          <Card hover>
+            <CardHeader>
+              <CardTitle>Estado del Flujo de Citas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={distribucionCitas}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  >
+                    {distribucionCitas.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #3b82f6', borderRadius: '8px' }}
+                    itemStyle={{ color: '#e8e9ed' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.7 }}
-        >
-        <Card hover>
-          <CardHeader>
-            <CardTitle>Top Servicios</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { nombre: 'Mantenimiento General', cantidad: 45, color: 'bg-accent' },
-                { nombre: 'Cambio de Aceite', cantidad: 38, color: 'bg-primary' },
-                { nombre: 'Afinamiento Completo', cantidad: 32, color: 'bg-blue-400' },
-                { nombre: 'Revisión de Frenos', cantidad: 25, color: 'bg-blue-300' },
-                { nombre: 'Cambio de Llantas', cantidad: 16, color: 'bg-blue-200' },
-              ].map((servicio, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-foreground">{servicio.nombre}</span>
-                    <span className="text-sm font-semibold text-accent">{servicio.cantidad}</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className={`${servicio.color} h-2 rounded-full transition-all duration-500`}
-                      style={{ width: `${(servicio.cantidad / 45) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* GRÁFICO 3: Top Productos */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.6 }}>
+          <Card hover>
+            <CardHeader>
+              <CardTitle>Top 5 Productos Más Vendidos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={topProductos}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ nombre, value }) => `${nombre.substring(0,10)}... (${value})`}
+                    outerRadius={100}
+                    dataKey="cantidad"
+                  >
+                    {topProductos.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #d4af37', borderRadius: '8px' }}
+                    itemStyle={{ color: '#e8e9ed' }}
+                    formatter={(value: number) => [`${value} unidades`, 'Ventas']}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </motion.div>
+
+        {/* GRÁFICO 4: Top Servicios */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.7 }}>
+          <Card hover className="h-full">
+            <CardHeader>
+              <CardTitle>Demanda de Servicios (Top 5)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6 pt-4">
+                {topServicios.length === 0 ? (
+                  <p className="text-muted-foreground text-center">No hay datos de servicios aún.</p>
+                ) : (
+                  topServicios.map((servicio, index) => {
+                    const maxCantidad = topServicios[0].cantidad; // El primero es el mayor
+                    const porcentaje = (servicio.cantidad / maxCantidad) * 100;
+                    
+                    return (
+                      <div key={index}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-foreground">{servicio.nombre}</span>
+                          <span className="text-sm font-black text-accent bg-accent/10 px-2 py-0.5 rounded">
+                            {servicio.cantidad} citas
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${porcentaje}%` }}
+                            transition={{ duration: 1, delay: 0.5 }}
+                            className="bg-primary h-full rounded-full"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
       </div>
     </div>
   );

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
-import { Calendar, Clock, Edit2, Trash2, AlertCircle, PlayCircle, CheckCircle, XCircle, Filter, Wrench } from 'lucide-react';
+// Se añadió el icono Download
+import { Calendar, Clock, Edit2, Trash2, AlertCircle, PlayCircle, CheckCircle, XCircle, Filter, Wrench, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
+// Importamos la librería para Excel
+import * as XLSX from 'xlsx';
 
 interface Cita {
   idCita: number;
@@ -39,7 +42,6 @@ export const GestionCitas = () => {
     try {
       setLoading(true);
       
-      // Hacemos peticiones en paralelo: Las citas y los usuarios
       const [resCitas, resUsuarios] = await Promise.all([
         fetch(`${API_URL}/api/citas`, { credentials: 'include' }),
         fetch(`${API_URL}/api/usuarios`, { credentials: 'include' })
@@ -57,7 +59,6 @@ export const GestionCitas = () => {
 
       if (resUsuarios.ok) {
         const dataUsuarios = await resUsuarios.json();
-        // Filtramos solo los que tienen rol 2 (Trabajadores)
         setTrabajadores(dataUsuarios.filter((u: any) => u.rol === 2));
       }
 
@@ -84,7 +85,7 @@ export const GestionCitas = () => {
   const abrirModalEdicion = (cita: Cita) => {
     setCitaEditando(cita);
     setNuevoEstado(cita.estado);
-    setNuevoTrabajadorId(cita.trabajador?.idUsuario || 0); // Cargamos el trabajador actual
+    setNuevoTrabajadorId(cita.trabajador?.idUsuario || 0);
     setModalAbierto(true);
   };
 
@@ -95,7 +96,6 @@ export const GestionCitas = () => {
       const idCita = citaEditando.idCita;
       let actualizacionRealizada = false;
 
-      // 1. Si el estado cambió, lo actualizamos
       if (nuevoEstado !== citaEditando.estado) {
         const resEstado = await fetch(`${API_URL}/api/citas/${idCita}/estado`, {
           method: 'PATCH',
@@ -107,7 +107,6 @@ export const GestionCitas = () => {
         actualizacionRealizada = true;
       }
 
-      // 2. Si el trabajador cambió (y no es 0), lo actualizamos
       const idTrabajadorActual = citaEditando.trabajador?.idUsuario || 0;
       if (nuevoTrabajadorId !== idTrabajadorActual && nuevoTrabajadorId !== 0) {
         const resTrabajador = await fetch(`${API_URL}/api/citas/${idCita}/trabajador`, {
@@ -122,7 +121,7 @@ export const GestionCitas = () => {
 
       if (actualizacionRealizada) {
         toast.success('Cambios guardados correctamente');
-        await cargarDatos(); // Recargar la tabla
+        await cargarDatos();
       }
       
       setModalAbierto(false);
@@ -143,6 +142,47 @@ export const GestionCitas = () => {
 
   const citasFiltradas = citas.filter(cita => filtroEstado === 'TODAS' || cita.estado === filtroEstado);
 
+  // --- NUEVA LÓGICA: EXPORTAR A EXCEL ---
+  const exportarExcel = () => {
+    if (citasFiltradas.length === 0) {
+      return toast.error('No hay citas para exportar bajo el filtro actual');
+    }
+
+    const datosExcel = citasFiltradas.map((cita) => {
+      return {
+        'ID Cita': cita.idCita,
+        'Fecha': new Date(cita.fecha + 'T00:00:00').toLocaleDateString('es-ES'),
+        'Hora': cita.hora.substring(0, 5),
+        'Estado': cita.estado.replace('_', ' '),
+        'Cliente': `${cita.cliente?.nombre} ${cita.cliente?.apellido}`,
+        'Teléfono': cita.cliente?.telefono,
+        'Servicio': cita.servicio?.nombreServicio,
+        'Monto Inicial (S/.)': cita.montoInicial || 0,
+        'Trabajador Asignado': cita.trabajador ? `${cita.trabajador.nombre} ${cita.trabajador.apellido}` : 'Sin asignar'
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(datosExcel);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Citas');
+
+    const wscols = [
+      { wch: 10 }, // ID Cita
+      { wch: 15 }, // Fecha
+      { wch: 10 }, // Hora
+      { wch: 15 }, // Estado
+      { wch: 35 }, // Cliente
+      { wch: 15 }, // Teléfono
+      { wch: 35 }, // Servicio
+      { wch: 20 }, // Monto
+      { wch: 35 }  // Trabajador
+    ];
+    worksheet['!cols'] = wscols;
+
+    XLSX.writeFile(workbook, `Reporte_Citas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Excel exportado correctamente');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -151,12 +191,20 @@ export const GestionCitas = () => {
           <p className="text-muted-foreground">Monitor general y asignación de personal</p>
         </div>
         
-        <div className="flex bg-card border border-border p-1 rounded-lg overflow-x-auto">
-          <Button variant={filtroEstado === 'TODAS' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('TODAS')} className="text-xs">Todas</Button>
-          <Button variant={filtroEstado === 'PENDIENTE' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('PENDIENTE')} className="text-xs text-yellow-600 dark:text-yellow-400">Pendientes</Button>
-          <Button variant={filtroEstado === 'EN_PROGRESO' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('EN_PROGRESO')} className="text-xs text-blue-600 dark:text-blue-400">En Progreso</Button>
-          <Button variant={filtroEstado === 'COMPLETADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('COMPLETADA')} className="text-xs text-green-600 dark:text-green-400">Completadas</Button>
-          <Button variant={filtroEstado === 'CANCELADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('CANCELADA')} className="text-xs text-red-600 dark:text-red-400">Canceladas</Button>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          {/* --- BOTÓN DE EXPORTACIÓN --- */}
+          <Button variant="secondary" onClick={exportarExcel} className="gap-2 bg-green-600/10 text-green-600 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 border border-green-600/20 h-10">
+            <Download size={16} />
+            Exportar Excel
+          </Button>
+
+          <div className="flex bg-card border border-border p-1 rounded-lg overflow-x-auto">
+            <Button variant={filtroEstado === 'TODAS' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('TODAS')} className="text-xs">Todas</Button>
+            <Button variant={filtroEstado === 'PENDIENTE' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('PENDIENTE')} className="text-xs text-yellow-600 dark:text-yellow-400">Pendientes</Button>
+            <Button variant={filtroEstado === 'EN_PROGRESO' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('EN_PROGRESO')} className="text-xs text-blue-600 dark:text-blue-400">En Progreso</Button>
+            <Button variant={filtroEstado === 'COMPLETADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('COMPLETADA')} className="text-xs text-green-600 dark:text-green-400">Completadas</Button>
+            <Button variant={filtroEstado === 'CANCELADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('CANCELADA')} className="text-xs text-red-600 dark:text-red-400">Canceladas</Button>
+          </div>
         </div>
       </div>
 

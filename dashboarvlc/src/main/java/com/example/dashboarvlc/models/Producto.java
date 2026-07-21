@@ -6,6 +6,7 @@ import lombok.Data;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "productos")
@@ -61,4 +62,24 @@ public class Producto {
     @JsonIgnore
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<HistorialStock> historialStock;
+
+    @Transient
+    @JsonProperty("precioFinal")
+    public Double getPrecioFinal() {
+        // Verifica si hay una oferta y si está dentro de la fecha (usando tu método estado)
+        if (this.oferta != null && this.oferta.estado()) {
+            
+            // ESCENARIO A: Si el descuento es un PORCENTAJE (ej: 20 para 20%)
+            double porcentaje = this.oferta.getDescuento() / 100.0;
+            double montoDescontado = this.precioVenta * porcentaje;
+            double precioCalculado = this.precioVenta - montoDescontado;
+            
+            // Redondeamos a 2 decimales para evitar problemas de precisión flotante
+            return Math.round(precioCalculado * 100.0) / 100.0;
+
+        }
+        
+        // Si no hay oferta o ya expiró, devuelve el precio original
+        return this.precioVenta;
+    }
 }

@@ -3,6 +3,7 @@ package com.example.dashboarvlc.services;
 import java.util.List;
 import java.util.Optional;
 
+import com.example.dashboarvlc.dto.ReseñaDTO;
 import com.example.dashboarvlc.models.Reseña;
 
 public interface ReseñaService {
@@ -10,4 +11,6 @@ public interface ReseñaService {
     Optional<Reseña> buscarPorId(Long id);
     Reseña guardar(Reseña resenia);
     void eliminar(Long id);
+    Reseña crearReseña(ReseñaDTO dto, String emailCliente);
+    List<Reseña> listarMisReseñas(String emailTrabajador);
 }

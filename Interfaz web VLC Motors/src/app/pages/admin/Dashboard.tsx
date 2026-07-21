@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { Header } from '../../components/layout/Header';
-import { Users, Wrench, Package, Tag, Folder, Truck, History, BarChart3, Calendar } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router'; // <-- Añadimos useLocation
+import { Users, Wrench, Package, Tag, Folder, Truck, History, BarChart3, Calendar, ShoppingBag } from 'lucide-react'; // <-- Se añadió ShoppingBag
+import { useNavigate, useLocation } from 'react-router'; 
 import { GestionUsuarios } from './GestionUsuarios';
 import { Servicios } from './Servicios';
 import { Productos } from './Productos';
@@ -12,19 +12,23 @@ import { Proveedores } from './Proveedores';
 import { HistorialStock } from './HistorialStock';
 import { Reportes } from './Reportes';
 import { GestionCitas } from './GestionCitas';
+import { GestionPedidos } from './GestionPedidos'; // <-- Importamos la nueva vista
 
-type View = 'usuarios' | 'servicios' | 'productos' | 'ofertas' | 'categorias' | 'proveedores' | 'historial' | 'reportes' | 'citas';
+// Se añadió 'pedidos' a los tipos permitidos
+type View = 'usuarios' | 'servicios' | 'productos' | 'pedidos' | 'ofertas' | 'categorias' | 'proveedores' | 'historial' | 'reportes' | 'citas';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // <-- Hook para leer la URL actual
+  const location = useLocation(); 
   const [currentView, setCurrentView] = useState<View>('reportes');
 
+  // Se integró 'Pedidos Web' en el menú lateral
   const sidebarItems = [
     { name: 'Reportes', icon: BarChart3, path: '/admin' },
     { name: 'Gestión de Usuarios', icon: Users, path: '/admin/usuarios' },
     { name: 'Servicios', icon: Wrench, path: '/admin/servicios' },
     { name: 'Productos', icon: Package, path: '/admin/productos' },
+    { name: 'Pedidos Web', icon: ShoppingBag, path: '/admin/pedidos' }, // <-- NUEVO ITEM
     { name: 'Ofertas', icon: Tag, path: '/admin/ofertas' },
     { name: 'Categorías', icon: Folder, path: '/admin/categorias' },
     { name: 'Proveedores', icon: Truck, path: '/admin/proveedores' },
@@ -32,23 +36,22 @@ export const AdminDashboard = () => {
     { name: 'Gestión de Citas', icon: Calendar, path: '/admin/citas' },
   ];
 
-  // NUEVA LÓGICA: Sincroniza la URL con la vista automáticamente al cargar o navegar
+  // Sincronización automática de la URL con la vista actual
   useEffect(() => {
     const path = location.pathname;
     if (path === '/admin/usuarios') setCurrentView('usuarios');
     else if (path === '/admin/servicios') setCurrentView('servicios');
     else if (path === '/admin/productos') setCurrentView('productos');
+    else if (path === '/admin/pedidos') setCurrentView('pedidos'); // <-- NUEVA RUTA
     else if (path === '/admin/ofertas') setCurrentView('ofertas');
     else if (path === '/admin/categorias') setCurrentView('categorias');
     else if (path === '/admin/proveedores') setCurrentView('proveedores');
     else if (path === '/admin/historial') setCurrentView('historial');
     else if (path === '/admin/citas') setCurrentView('citas');
-    else setCurrentView('reportes'); // fallback por defecto
+    else setCurrentView('reportes'); 
   }, [location.pathname]);
 
   const handleNavigation = (path: string) => {
-    // En lugar de cambiar el estado a mano, le decimos a React Router que cambie la URL.
-    // Al cambiar la URL, el useEffect de arriba detectará el cambio y actualizará la vista automáticamente.
     navigate(path);
   };
 
@@ -57,6 +60,7 @@ export const AdminDashboard = () => {
       case 'usuarios': return <GestionUsuarios />;
       case 'servicios': return <Servicios />;
       case 'productos': return <Productos />;
+      case 'pedidos': return <GestionPedidos />; // <-- RENDERIZADO DE LA NUEVA VISTA
       case 'ofertas': return <Ofertas />;
       case 'categorias': return <Categorias />;
       case 'proveedores': return <Proveedores />;

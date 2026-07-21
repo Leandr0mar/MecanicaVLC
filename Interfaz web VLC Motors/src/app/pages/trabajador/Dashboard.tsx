@@ -19,7 +19,6 @@ export const TrabajadorDashboard = () => {
     { name: 'Agenda de Citas', icon: CalendarCheck, path: '/trabajador' },
     { name: 'Gestionar Citas', icon: Clock, path: '/trabajador/gestionar' },
     { name: 'Pedidos', icon: Package, path: '/trabajador/pedidos' },
-    { name: 'Horarios', icon: Clock, path: '/trabajador/horarios' },
     { name: 'Reseñas', icon: Star, path: '/trabajador/reseñas' },
   ];
 

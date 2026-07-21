@@ -3,7 +3,6 @@ package com.example.dashboarvlc.controllers.rest;
 import com.example.dashboarvlc.models.Servicio;
 import com.example.dashboarvlc.services.ServicioService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +14,11 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class ServicioRestController {
 
-    @Autowired
-    private ServicioService servicioService;
+    private final ServicioService servicioService;
+
+    ServicioRestController(ServicioService servicioService) {
+        this.servicioService = servicioService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Servicio>> listarTodos() {

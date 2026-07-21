@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
-import { Plus, Edit2, Trash2, Package, Image as ImageIcon } from 'lucide-react';
+// Añadimos el icono Download importado de lucide-react
+import { Plus, Edit2, Trash2, Package, Image as ImageIcon, Filter, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Input } from '../../components/ui/input';
 import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
+// Importamos la librería para Excel
+import * as XLSX from 'xlsx';
 
 const formInicial = {
   nombre: '',
@@ -21,7 +24,6 @@ const formInicial = {
 
 export const Productos = () => {
   const [productos, setProductos] = useState<any[]>([]);
-  // Estados para las llaves foráneas
   const [categorias, setCategorias] = useState<any[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
   const [ofertas, setOfertas] = useState<any[]>([]);
@@ -31,6 +33,12 @@ export const Productos = () => {
   const [productoEditando, setProductoEditando] = useState<any | null>(null);
   const [formData, setFormData] = useState(formInicial);
 
+  // --- ESTADOS PARA LOS FILTROS ---
+  const [filtroCategoria, setFiltroCategoria] = useState<number | 'TODAS'>('TODAS');
+  const [filtroMarca, setFiltroMarca] = useState<string | 'TODAS'>('TODAS');
+  const [filtroProveedor, setFiltroProveedor] = useState<number | 'TODOS'>('TODOS');
+  const [filtroStock, setFiltroStock] = useState<string | 'TODOS'>('TODOS');
+
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -38,7 +46,6 @@ export const Productos = () => {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      // Hacemos las peticiones en paralelo para que cargue súper rápido
       const [resProd, resCat, resProv, resOf] = await Promise.all([
         fetch(`${API_URL}/api/productos`, { credentials: 'include' }),
         fetch(`${API_URL}/api/categorias`, { credentials: 'include' }),
@@ -94,12 +101,10 @@ export const Productos = () => {
   };
 
   const guardar = async () => {
-    // Validaciones
     if (!formData.nombre || !formData.codigoProducto || !formData.marca) return toast.error('Complete los datos básicos');
     if (formData.idCategoria === 0) return toast.error('Debe seleccionar una categoría');
     if (formData.idProveedor === 0) return toast.error('Debe seleccionar un proveedor');
 
-    // Mapeo JSON para las llaves foráneas de Spring Boot
     const payload = {
       nombre: formData.nombre,
       codigoProducto: formData.codigoProducto,
@@ -134,6 +139,73 @@ export const Productos = () => {
     }
   };
 
+  // --- LÓGICA DE FILTRADO ---
+  const marcasUnicas = Array.from(new Set(productos.map(p => p.marca))).sort();
+
+  const productosFiltrados = productos.filter(producto => {
+    const cumpleCategoria = filtroCategoria === 'TODAS' || producto.categoria?.idCategoria === filtroCategoria;
+    const cumpleMarca = filtroMarca === 'TODAS' || producto.marca === filtroMarca;
+    const cumpleProveedor = filtroProveedor === 'TODOS' || producto.proveedor?.idProveedor === filtroProveedor;
+    
+    let cumpleStock = true;
+    if (filtroStock === 'AGOTADO') cumpleStock = producto.stock === 0;
+    else if (filtroStock === 'POCO_STOCK') cumpleStock = producto.stock > 0 && producto.stock <= 5;
+    else if (filtroStock === 'EN_STOCK') cumpleStock = producto.stock > 5;
+
+    return cumpleCategoria && cumpleMarca && cumpleProveedor && cumpleStock;
+  });
+
+  // --- NUEVA LÓGICA: EXPORTAR A EXCEL ---
+  const exportarExcel = () => {
+    if (productosFiltrados.length === 0) {
+      return toast.error('No hay productos para exportar');
+    }
+
+    // 1. Mapeamos los datos para que el Excel tenga cabeceras claras y datos legibles
+    const datosExcel = productosFiltrados.map((p) => {
+      // Determinamos el precio final real
+      const precioCalculado = (p.precioFinal && p.precioFinal < p.precioVenta) ? p.precioFinal : p.precioVenta;
+      const estadoStock = p.stock > 10 ? 'Disponible' : p.stock > 0 ? 'Poco stock' : 'Agotado';
+
+      return {
+        'Código (SKU)': p.codigoProducto,
+        'Producto': p.nombre,
+        'Marca': p.marca,
+        'Categoría': p.categoria?.nombreCategoria || 'Sin categoría',
+        'Proveedor': p.proveedor?.nombreProveedor || 'Sin proveedor',
+        'Precio Base (S/.)': p.precioVenta,
+        'Precio Final (S/.)': precioCalculado,
+        'Oferta Activa': p.oferta?.titulo || 'Ninguna',
+        'Stock Actual': p.stock,
+        'Estado Inventario': estadoStock
+      };
+    });
+
+    // 2. Creamos la hoja de trabajo y el libro
+    const worksheet = XLSX.utils.json_to_sheet(datosExcel);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+
+    // 3. Ajustamos el ancho de las columnas para mejor lectura
+    const wscols = [
+      { wch: 15 }, // Código
+      { wch: 35 }, // Producto
+      { wch: 15 }, // Marca
+      { wch: 20 }, // Categoría
+      { wch: 25 }, // Proveedor
+      { wch: 15 }, // Precio Base
+      { wch: 15 }, // Precio Final
+      { wch: 20 }, // Oferta
+      { wch: 12 }, // Stock
+      { wch: 18 }  // Estado
+    ];
+    worksheet['!cols'] = wscols;
+
+    // 4. Descargamos el archivo
+    XLSX.writeFile(workbook, `Reporte_Inventario_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Excel exportado correctamente');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -141,15 +213,77 @@ export const Productos = () => {
           <h2 className="mb-2 text-foreground">Productos</h2>
           <p className="text-muted-foreground">Administra el inventario de repuestos</p>
         </div>
-        <Button variant="accent" onClick={() => abrirModal()} className="gap-2">
-          <Plus size={18} />
-          Nuevo Producto
-        </Button>
+        
+        {/* MODIFICACIÓN: Agrupamos los botones de acción */}
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={exportarExcel} className="gap-2 bg-green-600/10 text-green-600 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 border border-green-600/20">
+            <Download size={18} />
+            Exportar Excel
+          </Button>
+          <Button variant="accent" onClick={() => abrirModal()} className="gap-2">
+            <Plus size={18} />
+            Nuevo Producto
+          </Button>
+        </div>
+      </div>
+
+      {/* --- BARRA DE FILTROS --- */}
+      <div className="bg-card border border-border p-4 rounded-xl flex flex-wrap gap-4 items-end">
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-xs mb-1 text-muted-foreground font-medium">Categoría</label>
+          <select 
+            value={filtroCategoria} 
+            onChange={(e) => setFiltroCategoria(e.target.value === 'TODAS' ? 'TODAS' : Number(e.target.value))}
+            className="w-full px-3 py-2 text-sm bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="TODAS">Todas las categorías</option>
+            {categorias.map(c => <option key={c.idCategoria} value={c.idCategoria}>{c.nombreCategoria}</option>)}
+          </select>
+        </div>
+
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-xs mb-1 text-muted-foreground font-medium">Marca</label>
+          <select 
+            value={filtroMarca} 
+            onChange={(e) => setFiltroMarca(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="TODAS">Todas las marcas</option>
+            {marcasUnicas.map(marca => <option key={marca as string} value={marca as string}>{marca}</option>)}
+          </select>
+        </div>
+
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-xs mb-1 text-muted-foreground font-medium">Proveedor</label>
+          <select 
+            value={filtroProveedor} 
+            onChange={(e) => setFiltroProveedor(e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value))}
+            className="w-full px-3 py-2 text-sm bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="TODOS">Todos los proveedores</option>
+            {proveedores.map(p => <option key={p.idProveedor} value={p.idProveedor}>{p.nombreProveedor}</option>)}
+          </select>
+        </div>
+
+        <div className="w-full md:w-auto flex bg-muted/50 border border-border p-1 rounded-lg">
+          <Button variant={filtroStock === 'TODOS' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroStock('TODOS')} className="text-xs">Todos</Button>
+          <Button variant={filtroStock === 'EN_STOCK' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroStock('EN_STOCK')} className="text-xs text-green-600 dark:text-green-400">Normal</Button>
+          <Button variant={filtroStock === 'POCO_STOCK' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroStock('POCO_STOCK')} className="text-xs text-yellow-600 dark:text-yellow-400">Poco Stock</Button>
+          <Button variant={filtroStock === 'AGOTADO' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroStock('AGOTADO')} className="text-xs text-red-600 dark:text-red-400">Agotados</Button>
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Cargando inventario...</div>
+        ) : productosFiltrados.length === 0 ? (
+          <div className="text-center p-12 bg-card">
+            <Filter size={40} className="mx-auto mb-3 opacity-20 text-muted-foreground" />
+            <p className="text-muted-foreground font-medium">No se encontraron productos bajo este filtro.</p>
+            <Button variant="link" onClick={() => { setFiltroCategoria('TODAS'); setFiltroMarca('TODAS'); setFiltroProveedor('TODOS'); setFiltroStock('TODOS'); }} className="mt-2 text-accent">
+              Limpiar filtros
+            </Button>
+          </div>
         ) : (
           <table className="w-full min-w-[800px]">
             <thead className="bg-muted">
@@ -163,10 +297,8 @@ export const Productos = () => {
               </tr>
             </thead>
             <tbody>
-              {productos.map((producto) => (
+              {productosFiltrados.map((producto) => (
                 <tr key={producto.idProducto} className="border-t border-border hover:bg-muted/50 transition-colors">
-                  
-                  {/* Celda de la Imagen */}
                   <td className="p-4">
                     {producto.imagenUrl ? (
                       <img src={producto.imagenUrl} alt={producto.nombre} className="w-10 h-10 rounded-md object-cover border border-border" />
@@ -176,7 +308,6 @@ export const Productos = () => {
                       </div>
                     )}
                   </td>
-
                   <td className="p-4">
                     <div className="font-medium text-foreground">{producto.nombre}</div>
                     <div className="text-xs text-muted-foreground">{producto.marca} | {producto.codigoProducto}</div>
@@ -186,10 +317,26 @@ export const Productos = () => {
                       {producto.categoria?.nombreCategoria || 'Sin categoría'}
                     </span>
                   </td>
-                  <td className="p-4 text-accent font-semibold">
-                    {formatCurrency(producto.precioVenta)}
-                    {/* Indicador visual si el producto tiene oferta */}
-                    {producto.oferta && <span className="ml-2 text-xs text-red-500 line-through opacity-70">Oferta activa</span>}
+                  <td className="p-4">
+                    {producto.precioFinal && producto.precioFinal < producto.precioVenta ? (
+                      <div className="flex flex-col">
+                        <span className="text-accent font-bold text-base">
+                          {formatCurrency(producto.precioFinal)}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground line-through opacity-70">
+                            {formatCurrency(producto.precioVenta)}
+                          </span>
+                          <span className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded font-medium">
+                            -{producto.oferta?.descuento}%
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-accent font-semibold text-base">
+                        {formatCurrency(producto.precioVenta)}
+                      </span>
+                    )}
                   </td>
                   <td className="p-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -227,7 +374,6 @@ export const Productos = () => {
             </Dialog.Title>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Columna Izquierda (Datos básicos) */}
               <div className="space-y-4">
                 <Input label="Código (SKU)" placeholder="MOT-001" value={formData.codigoProducto} onChange={(e) => setFormData({...formData, codigoProducto: e.target.value})} />
                 <Input label="Nombre del producto" placeholder="Aceite Motor 20W-50" value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} />
@@ -238,7 +384,6 @@ export const Productos = () => {
                 </div>
               </div>
 
-              {/* Columna Derecha (Relaciones e Imagen) */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm mb-2 text-foreground font-medium">Categoría *</label>

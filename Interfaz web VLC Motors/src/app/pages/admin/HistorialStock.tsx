@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { ArrowUp, ArrowDown, Package, Activity } from 'lucide-react';
+// Se añadieron los import de Button y el icono Download
+import { ArrowUp, ArrowDown, Package, Activity, Download } from 'lucide-react';
+import { Button } from '../../components/ui/button'; 
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { API_URL } from '../../context/AuthContext';
+// Importamos la librería de Excel
+import * as XLSX from 'xlsx';
 
 interface Historial {
   idHistorialStock: number;
@@ -40,6 +44,45 @@ export const HistorialStock = () => {
     }
   };
 
+  // --- NUEVA LÓGICA: EXPORTAR A EXCEL ---
+  const exportarExcel = () => {
+    if (movimientos.length === 0) {
+      return toast.error('No hay movimientos de stock para exportar');
+    }
+
+    // 1. Mapeamos los datos para crear cabeceras legibles en el Excel
+    const datosExcel = movimientos.map((m) => {
+      return {
+        'ID Transacción': m.idHistorialStock,
+        'Producto': m.producto?.nombre || 'Producto no disponible',
+        'Tipo de Movimiento': m.tipoMovimiento.replace('_', ' '),
+        'Cantidad': m.cantidad,
+        'Fecha y Hora': new Date(m.fechaMovimiento).toLocaleString('es-ES'),
+        'Descripción / Motivo': m.descripcion
+      };
+    });
+
+    // 2. Creamos la hoja y el libro
+    const worksheet = XLSX.utils.json_to_sheet(datosExcel);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Historial_Stock');
+
+    // 3. Ajustamos el ancho de las columnas
+    const wscols = [
+      { wch: 15 }, // ID Transacción
+      { wch: 45 }, // Producto
+      { wch: 20 }, // Tipo de Movimiento
+      { wch: 12 }, // Cantidad
+      { wch: 22 }, // Fecha y Hora
+      { wch: 50 }  // Descripción
+    ];
+    worksheet['!cols'] = wscols;
+
+    // 4. Descargamos el archivo
+    XLSX.writeFile(workbook, `Reporte_Historial_Stock_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Reporte de stock exportado correctamente');
+  };
+
   // --- CÁLCULOS MATEMÁTICOS PARA LAS TARJETAS ESTADÍSTICAS ---
   const movimientosEsteMes = movimientos.filter(m => {
     const fecha = new Date(m.fechaMovimiento);
@@ -57,9 +100,17 @@ export const HistorialStock = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="mb-2 text-foreground">Historial de Stock</h2>
-        <p className="text-muted-foreground">Registro de movimientos de inventario en tiempo real</p>
+      
+      {/* --- ENCABEZADO CON BOTÓN DE EXPORTAR --- */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="mb-2 text-foreground">Historial de Stock</h2>
+          <p className="text-muted-foreground">Registro de movimientos de inventario en tiempo real</p>
+        </div>
+        <Button variant="secondary" onClick={exportarExcel} className="gap-2 bg-green-600/10 text-green-600 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 border border-green-600/20">
+          <Download size={18} />
+          Exportar Historial
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

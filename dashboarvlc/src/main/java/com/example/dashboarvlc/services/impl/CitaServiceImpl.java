@@ -97,4 +97,13 @@ public class CitaServiceImpl implements CitaService {
         cita.setTrabajador(nuevoTrabajador);
         return citaRepository.save(cita);
     }
+
+    @Override 
+    @Transactional 
+    public Cita agregarObservacion(Long id, String observacion) {
+        return citaRepository.findById(id).map(c -> {
+            c.setObservaciones(observacion); 
+            return citaRepository.save(c);
+        }).orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+    }
 }

@@ -17,4 +17,5 @@ public interface CitaService {
     List<String> obtenerHorariosDisponibles(LocalDate fecha);
     List<Cita> listarPorCliente(String email);
     Cita reasignarTrabajador(Long idCita, Long idTrabajador);
+    Cita agregarObservacion(Long id, String observacion);
 }
