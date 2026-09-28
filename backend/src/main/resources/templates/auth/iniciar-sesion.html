@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Iniciar Sesión - VLC</title>
+</head>
+<body>
+    <h2>Ingreso al Sistema Mecánico VLC</h2>
+
+    <div th:if="${param.error}" style="color: red;">
+        <p>Usuario o contraseña incorrectos. Intente de nuevo.</p>
+    </div>
+
+    <div th:if="${param.logout}" style="color: green;">
+        <p>Has cerrado sesión correctamente.</p>
+    </div>
+
+    <form th:action="@{/iniciar-sesion}" method="POST">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+        <div>
+            <label>Correo Electrónico:</label>
+            <input type="email" name="username" required />
+        </div>
+        <div>
+            <label>Contraseña:</label>
+            <input type="password" name="password" required />
+        </div>
+        <button type="submit">Ingresar</button>
+    </form>
+    
+    <p>¿No tienes cuenta? <a th:href="@{/registrar}">Regístrate aquí</a></p>
+</body>
+</html>

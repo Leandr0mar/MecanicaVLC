@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Portal de Cliente - VLC</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f4f6f9; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+        .btn-logout { background-color: #dc3545; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .card { background: #e9ecef; padding: 20px; border-radius: 6px; }
+        .card h3 { margin-top: 0; color: #0d6efd; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #0d6efd; color: white; }
+        .badge { padding: 5px 10px; border-radius: 4px; font-size: 0.9em; font-weight: bold; }
+        .badge-pendiente { background-color: #ffc107; color: #212529; }
+        .badge-progreso { background-color: #0dcaf0; color: white; }
+        .badge-completada { background-color: #198754; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>¡Bienvenido, <span th:text="${clienteLogueado.nombre} + ' ' + ${clienteLogueado.apellido}">Juan Pérez</span>!</h1>
+            <p>Desde aquí puedes monitorear las atenciones de tu vehículo en el Taller VLC.</p>
+        </div>
+        <form th:action="@{/logout}" method="POST">
+            <button type="submit" class="btn-logout">Cerrar Sesión</button>
+        </form>
+    </header>
+
+    <div class="grid-info">
+        <div class="card">
+            <h3>Mis Datos Personales</h3>
+            <p><strong>Correo:</strong> <span th:text="${clienteLogueado.email}">juan@gmail.com</span></p>
+            <p><strong>Teléfono:</strong> <span th:text="${clienteLogueado.telefono}">987654321</span></p>
+            <p><strong>Dirección:</strong> <span th:text="${clienteLogueado.direccion}">Av. Central 123</span></p>
+        </div>
+
+        <div class="card">
+            <h3>Información de mi Mototaxi</h3>
+            <p><strong>Número de Placa:</strong> <span th:text="${clienteLogueado.placaMototaxi}">1234-5A</span></p>
+            <p><strong>Marca:</strong> <span th:text="${clienteLogueado.marcaMototaxi}">Bajaj</span></p>
+            <p><strong>Modelo:</strong> <span th:text="${clienteLogueado.modeloMototaxi}">Torito RE 4S</span></p>
+        </div>
+    </div>
+
+    <div class="services-section">
+        <h2>Historial de Citas y Mantenimientos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Cita</th>
+                    <th>Fecha y Hora</th>
+                    <th>Servicio Solicitado</th>
+                    <th>Mecánico Asignado</th>
+                    <th>Estado de la Cita</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>101</td>
+                    <td>08/06/2026 - 09:00 AM</td>
+                    <td>Mantenimiento Correctivo (Cambio de Bujía)</td>
+                    <td>Mecánico Carlos L.</td>
+                    <td><span class="badge badge-progreso">EN PROGRESO</span></td>
+                </tr>
+                <tr>
+                    <td>98</td>
+                    <td>01/06/2026 - 03:30 PM</td>
+                    <td>Ajuste de Frenos y Sistema Eléctrico</td>
+                    <td>Mecánico Roberto M.</td>
+                    <td><span class="badge badge-completada">COMPLETADA</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
