@@ -6,6 +6,7 @@ public class LoginResponse {
     private Long id;
     private String nombre;
     private String apellido;
+    private String dni;
     private String email;
     private String rol;
 
@@ -33,6 +34,14 @@ public class LoginResponse {
         this.apellido = apellido;
     }
 
+    public String getDni() {
+        return dni;
+    }
+
+    public void setDni(String dni) {
+        this.dni = dni;
+    }
+
     public String getEmail() {
         return email;
     }
@@ -54,6 +63,7 @@ public class LoginResponse {
         response.setId(usuario.getIdUsuario());
         response.setNombre(usuario.getNombre());
         response.setApellido(usuario.getApellido());
+        response.setDni(usuario.getDni());
         response.setEmail(usuario.getEmail());
         response.setRol(mapRole(usuario.getRol()));
         return response;

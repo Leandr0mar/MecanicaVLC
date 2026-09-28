@@ -4,6 +4,7 @@ interface User {
   id: string;
   nombre: string;
   apellido?: string;
+  dni?: string;
   email: string;
   rol: 'cliente' | 'trabajador' | 'admin';
   telefono?: string;
@@ -20,6 +21,7 @@ interface AuthContextType {
 interface RegisterData {
   nombre: string;
   apellido: string;
+  dni: string;
   email: string;
   password: string;
   telefono: string;

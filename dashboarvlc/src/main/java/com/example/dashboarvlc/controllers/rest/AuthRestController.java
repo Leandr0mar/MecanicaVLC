@@ -66,6 +66,10 @@ public class AuthRestController {
 
     @PostMapping("/registrar")
     public ResponseEntity<?> register(@Valid @RequestBody ClienteRegistrationRequest request) {
+        if (usuarioService.buscarPorDni(request.getDni()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "El DNI ya está registrado"));
+        }
         if (clienteService.buscarPorEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "El correo electrónico ya está registrado"));
@@ -74,6 +78,7 @@ public class AuthRestController {
         Cliente cliente = new Cliente();
         cliente.setNombre(request.getNombre());
         cliente.setApellido(request.getApellido());
+        cliente.setDni(request.getDni());
         cliente.setEmail(request.getEmail());
         cliente.setContrasenia(passwordEncoder.encode(request.getPassword()));
         cliente.setTelefono(request.getTelefono());

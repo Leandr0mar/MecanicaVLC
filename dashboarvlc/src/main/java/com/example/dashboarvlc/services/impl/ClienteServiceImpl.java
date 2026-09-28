@@ -35,7 +35,7 @@ public class ClienteServiceImpl implements ClienteService {
     @Override @Transactional public Cliente actualizar(Long id, Cliente c) {
         return clienteRepository.findById(id).map(existente -> {
             existente.setNombre(c.getNombre()); existente.setApellido(c.getApellido());
-            existente.setEmail(c.getEmail()); existente.setTelefono(c.getTelefono());
+            existente.setDni(c.getDni()); existente.setEmail(c.getEmail()); existente.setTelefono(c.getTelefono());
             existente.setDireccion(c.getDireccion()); existente.setPlacaMototaxi(c.getPlacaMototaxi());
             existente.setMarcaMototaxi(c.getMarcaMototaxi()); existente.setModeloMototaxi(c.getModeloMototaxi());
             return clienteRepository.save(existente);

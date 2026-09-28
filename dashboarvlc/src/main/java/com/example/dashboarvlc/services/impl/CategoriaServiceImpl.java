@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor // <-- REEMPLAZA A @Autowired
+@RequiredArgsConstructor
 public class CategoriaServiceImpl implements CategoriaService {
     
     private final CategoriaRepository categoriaRepository;

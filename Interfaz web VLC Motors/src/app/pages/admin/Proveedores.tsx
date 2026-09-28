@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
 import { Plus, Edit2, Trash2, Truck, Phone, FileText } from 'lucide-react';
@@ -12,27 +13,37 @@ interface Proveedor {
   ruc: string;
   nombreProveedor: string;
   telefono: string;
-  productos?: any[]; // Lo dejamos preparado para cuando creemos Producto
+  productos?: any[];
 }
 
-interface ProveedorForm {
+interface ProveedorFormData {
   ruc: string;
   nombreProveedor: string;
   telefono: string;
 }
 
-const proveedorInicial: ProveedorForm = {
-  ruc: '',
-  nombreProveedor: '',
-  telefono: '',
-};
-
 export const Proveedores = () => {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [guardando, setGuardando] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [proveedorEditando, setProveedorEditando] = useState<Proveedor | null>(null);
-  const [formData, setFormData] = useState<ProveedorForm>(proveedorInicial);
+
+  // React Hook Form con estrategia profesional onBlur + onChange
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProveedorFormData>({
+    mode: 'onBlur',             // No interrumpe mientras el usuario escribe; valida al salir del campo
+    reValidateMode: 'onChange', // Limpia el error al instante en cuanto el valor es corregido
+    defaultValues: {
+      ruc: '',
+      nombreProveedor: '',
+      telefono: '',
+    },
+  });
 
   useEffect(() => {
     cargarProveedores();
@@ -52,7 +63,7 @@ export const Proveedores = () => {
       }
 
       if (!res.ok) throw new Error('No se pudo cargar los proveedores');
-      
+
       const data = await res.json();
       setProveedores(data);
     } catch (error) {
@@ -78,56 +89,40 @@ export const Proveedores = () => {
       if (!res.ok) throw new Error('Error al eliminar');
 
       await cargarProveedores();
-      toast.success('Proveedor eliminado');
+      toast.success('Proveedor eliminado correctamente');
     } catch (error) {
-      toast.error('Error al eliminar proveedor. Revisa que no tenga productos asociados.');
+      toast.error('No se pudo eliminar el proveedor. Verifique que no tenga repuestos vinculados.');
       console.error(error);
     }
   };
 
   const abrirModal = (proveedor?: Proveedor) => {
-    if (proveedor) {
-      setProveedorEditando(proveedor);
-      setFormData({
-        ruc: proveedor.ruc,
-        nombreProveedor: proveedor.nombreProveedor,
-        telefono: proveedor.telefono,
-      });
-    } else {
-      setProveedorEditando(null);
-      setFormData(proveedorInicial);
-    }
+    setProveedorEditando(proveedor ?? null);
+
+    // Inicializa o precarga el formulario con valores limpios
+    reset({
+      ruc: proveedor?.ruc ?? '',
+      nombreProveedor: proveedor?.nombreProveedor ?? '',
+      telefono: proveedor?.telefono ?? '',
+    });
+
     setModalAbierto(true);
   };
 
-  const guardar = async () => {
-    // Validaciones preventivas
-    if (!formData.ruc.trim() || formData.ruc.length !== 11) {
-      toast.error('El RUC debe tener exactamente 11 caracteres');
-      return;
-    }
-
-    if (!formData.nombreProveedor.trim()) {
-      toast.error('El nombre del proveedor no puede estar vacío');
-      return;
-    }
-
-    if (!formData.telefono.trim()) {
-      toast.error('El teléfono es obligatorio');
-      return;
-    }
+  const onSubmit = async (data: ProveedorFormData) => {
+    setGuardando(true);
 
     const payload = {
-      ruc: formData.ruc.trim(),
-      nombreProveedor: formData.nombreProveedor.trim(),
-      telefono: formData.telefono.trim(),
+      ruc: data.ruc.trim(),
+      nombreProveedor: data.nombreProveedor.trim(),
+      telefono: data.telefono.trim(),
     };
 
     try {
       const url = proveedorEditando
         ? `${API_URL}/api/proveedores/${proveedorEditando.idProveedor}`
         : `${API_URL}/api/proveedores`;
-      
+
       const method = proveedorEditando ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -142,22 +137,25 @@ export const Proveedores = () => {
         return;
       }
 
-      // Manejo específico si el backend rechaza porque el RUC ya existe
       if (res.status === 409 || res.status === 400) {
-        toast.error('Error al guardar. Es posible que el RUC ya esté registrado.');
+        const errorData = await res.json().catch(() => null);
+        toast.error(errorData?.error || 'El número de RUC ya se encuentra registrado en el sistema.');
         return;
       }
 
-      if (!res.ok) throw new Error('Error al guardar');
+      if (!res.ok) {
+        throw new Error('Error al guardar los datos del proveedor');
+      }
 
       await cargarProveedores();
-      toast.success(proveedorEditando ? 'Proveedor actualizado' : 'Proveedor creado');
+      toast.success(proveedorEditando ? 'Proveedor actualizado correctamente' : 'Proveedor registrado exitosamente');
       setModalAbierto(false);
       setProveedorEditando(null);
-      setFormData(proveedorInicial);
     } catch (error) {
-      toast.error('Ocurrió un error inesperado al guardar');
+      toast.error(error instanceof Error ? error.message : 'Ocurrió un error inesperado al guardar');
       console.error(error);
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -165,8 +163,8 @@ export const Proveedores = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="mb-2 text-foreground">Proveedores</h2>
-          <p className="text-muted-foreground">Gestiona tus proveedores de productos</p>
+          <h2 className="mb-2 text-foreground font-bold text-2xl">Proveedores</h2>
+          <p className="text-muted-foreground text-sm">Gestiona distribuidores y fabricantes de repuestos</p>
         </div>
         <Button variant="accent" onClick={() => abrirModal()} className="gap-2">
           <Plus size={18} />
@@ -176,6 +174,11 @@ export const Proveedores = () => {
 
       {loading ? (
         <div className="p-8 text-center text-muted-foreground">Cargando proveedores...</div>
+      ) : proveedores.length === 0 ? (
+        <div className="text-center p-12 bg-card border border-border rounded-xl">
+          <Truck size={40} className="mx-auto mb-3 opacity-20 text-muted-foreground" />
+          <p className="text-muted-foreground font-medium">No hay proveedores registrados en la base de datos.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {proveedores.map((proveedor) => (
@@ -187,10 +190,12 @@ export const Proveedores = () => {
                       <Truck size={20} className="text-accent" />
                     </div>
                     <div>
-                      <h4 className="text-card-foreground line-clamp-1">{proveedor.nombreProveedor}</h4>
+                      <h4 className="text-card-foreground font-semibold line-clamp-1">
+                        {proveedor.nombreProveedor}
+                      </h4>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <FileText size={12} className="text-muted-foreground" />
-                        <span>RUC: {proveedor.ruc}</span>
+                        <span className="font-mono">RUC: {proveedor.ruc}</span>
                       </div>
                     </div>
                   </div>
@@ -206,18 +211,32 @@ export const Proveedores = () => {
                 <div className="mb-4">
                   <p className="text-xs text-muted-foreground mb-2">Productos suministrados:</p>
                   <div className="flex flex-wrap gap-1">
-                    <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs">
+                    <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
                       {proveedor.productos ? proveedor.productos.length : 0} productos asociados
                     </span>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="flex-1 gap-2" onClick={() => abrirModal(proveedor)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 gap-2"
+                    onClick={() => abrirModal(proveedor)}
+                    title="Editar proveedor"
+                    aria-label={`Editar ${proveedor.nombreProveedor}`}
+                  >
                     <Edit2 size={14} />
                     Editar
                   </Button>
-                  <Button variant="destructive" size="sm" className="gap-2" onClick={() => eliminar(proveedor.idProveedor)}>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => eliminar(proveedor.idProveedor)}
+                    title="Eliminar proveedor"
+                    aria-label={`Eliminar ${proveedor.nombreProveedor}`}
+                  >
                     <Trash2 size={14} />
                   </Button>
                 </div>
@@ -227,44 +246,94 @@ export const Proveedores = () => {
         </div>
       )}
 
+      {/* Modal Dialog con validaciones React Hook Form */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <Dialog.Title className="mb-6 text-card-foreground">
+            <Dialog.Title className="mb-6 text-card-foreground text-xl font-bold">
               {proveedorEditando ? 'Editar Proveedor' : 'Nuevo Proveedor'}
             </Dialog.Title>
 
-            <div className="space-y-4">
-              <Input 
-                label="RUC" 
-                placeholder="Ej: 20123456789" 
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+              
+              {/* RUC */}
+              <Input
+                label="RUC de la empresa *"
+                placeholder="20123456789"
+                inputMode="numeric"
                 maxLength={11}
-                value={formData.ruc}
-                onChange={(e) => setFormData({ ...formData, ruc: e.target.value.replace(/\D/g, '') })} // Solo permite números
+                error={errors.ruc?.message}
+                {...register('ruc', {
+                  required: 'El RUC no puede estar vacío',
+                  pattern: {
+                    value: /^\d{11}$/,
+                    message: 'El RUC de la empresa en Perú debe tener exactamente 11 dígitos',
+                  },
+                })}
               />
-              <Input 
-                label="Nombre del proveedor" 
-                placeholder="Lubricantes del Perú S.A.C." 
-                value={formData.nombreProveedor}
-                onChange={(e) => setFormData({ ...formData, nombreProveedor: e.target.value })}
-              />
-              <Input 
-                label="Teléfono" 
-                placeholder="Ej: 987654321" 
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              />
-            </div>
 
-            <div className="flex gap-3 mt-6">
-              <Button variant="ghost" className="flex-1" onClick={() => setModalAbierto(false)}>
-                Cancelar
-              </Button>
-              <Button variant="accent" className="flex-1" onClick={guardar}>
-                Guardar
-              </Button>
-            </div>
+              {/* Nombre del Proveedor */}
+              <Input
+                label="Razón Social / Proveedor *"
+                placeholder="Lubricantes y Repuestos del Perú S.A.C."
+                error={errors.nombreProveedor?.message}
+                {...register('nombreProveedor', {
+                  required: 'El nombre del proveedor no puede estar vacío',
+                  maxLength: {
+                    value: 150,
+                    message: 'El nombre del proveedor no debe superar los 150 caracteres',
+                  },
+                  validate: (v) =>
+                    v.trim().length > 0 || 'El nombre no puede consistir únicamente de espacios',
+                })}
+              />
+
+              {/* Teléfono */}
+              <Input
+                label="Teléfono de contacto *"
+                placeholder="987654321 o (01) 456-7890"
+                inputMode="tel"
+                maxLength={20}
+                error={errors.telefono?.message}
+                {...register('telefono', {
+                  required: 'El teléfono no puede estar vacío',
+                  maxLength: {
+                    value: 20,
+                    message: 'El teléfono no debe superar los 20 caracteres',
+                  },
+                  pattern: {
+                    value: /^[+]?[0-9\s-]{6,20}$/,
+                    message: 'Formato de teléfono o celular inválido',
+                  },
+                  validate: (v) =>
+                    v.trim().length > 0 || 'El teléfono no puede consistir únicamente de espacios',
+                })}
+              />
+
+              <div className="flex gap-3 pt-4 border-t border-border">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => setModalAbierto(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="accent"
+                  className="flex-1"
+                  disabled={guardando}
+                >
+                  {guardando
+                    ? 'Procesando...'
+                    : proveedorEditando
+                    ? 'Actualizar Proveedor'
+                    : 'Guardar Proveedor'}
+                </Button>
+              </div>
+            </form>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

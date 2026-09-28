@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 import com.example.dashboarvlc.models.Cliente;
 import com.example.dashboarvlc.services.ClienteService;
+import com.example.dashboarvlc.services.UsuarioService;
 
 import jakarta.validation.Valid;
 
@@ -23,6 +24,9 @@ public class AuthWebController {
 
     @Autowired
         private ClienteService clienteService;
+
+    @Autowired
+    private UsuarioService usuarioService;
 
     @Autowired
     private PasswordEncoder passwordEncoder; // Inyectamos el encriptador de SecurityConfig
@@ -51,6 +55,11 @@ public class AuthWebController {
         }
 
         try {
+            if (usuarioService.buscarPorDni(cliente.getDni()).isPresent()) {
+                model.addAttribute("error", "El DNI ya se encuentra registrado.");
+                return "auth/registrar";
+            }
+
             // 2. Seguridad profesional: Encriptar la contraseña con BCrypt
             String contraseñaEncriptada = passwordEncoder.encode(cliente.getContrasenia());
             cliente.setContrasenia(contraseñaEncriptada);

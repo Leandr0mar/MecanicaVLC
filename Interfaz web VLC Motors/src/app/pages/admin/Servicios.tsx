@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { Button } from '../../components/ui/button';
-import { Plus, Edit2, Trash2, Wrench } from 'lucide-react';
+import { Plus, Edit2, Trash2, Wrench, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Input } from '../../components/ui/input';
@@ -16,46 +17,50 @@ interface Servicio {
   duracionEstimadaMinutos: number;
 }
 
-interface ServicioForm {
-  nombre: string;
+interface ServicioFormData {
+  nombreServicio: string;
+  descripcionServicio: string;
+  precioInicial: number;
   duracionEstimadaMinutos: number;
-  precio: number;
-  descripcion: string;
 }
-
-const servicioInicial: ServicioForm = {
-  nombre: '',
-  duracionEstimadaMinutos: 30,
-  precio: 0,
-  descripcion: '',
-};
 
 export const Servicios = () => {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [servicioEditando, setServicioEditando] = useState<Servicio | null>(null);
-  const [form, setForm] = useState<ServicioForm>(servicioInicial);
+  const [guardando, setGuardando] = useState(false);
 
-const cargarServicios = async () => {
+  // Configuración de validación reactiva profesional
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ServicioFormData>({
+    mode: 'onBlur',             // Valida al salir del input para no interrumpir la escritura
+    reValidateMode: 'onChange', // Si quedó en error, limpia el mensaje inmediatamente al corregirse
+    defaultValues: {
+      nombreServicio: '',
+      descripcionServicio: '',
+      precioInicial: 0,
+      duracionEstimadaMinutos: 30,
+    },
+  });
+
+  const cargarServicios = async () => {
     try {
       const res = await fetch(`${API_URL}/api/servicios`, {
         credentials: 'include',
       });
 
-      // --- NUEVA LÓGICA PARA MANEJAR LA SESIÓN MUERTA ---
       if (res.status === 401) {
         toast.error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
-        // Opcional: Limpiar localStorage si guardas datos del usuario ahí
-        // localStorage.removeItem('user'); 
-        
-        // Redirigir al usuario a la vista de login
-        window.location.href = '/iniciar-sesion'; 
-        return; // Detenemos la ejecución aquí
+        window.location.href = '/iniciar-sesion';
+        return;
       }
-      // --------------------------------------------------
 
       if (!res.ok) throw new Error('No se pudo cargar los servicios');
-      
+
       const data = await res.json();
 
       const serviciosMapeados = data.map((item: any) => ({
@@ -84,6 +89,12 @@ const cargarServicios = async () => {
         method: 'DELETE',
         credentials: 'include',
       });
+
+      if (res.status === 401) {
+        window.location.href = '/iniciar-sesion';
+        return;
+      }
+
       if (!res.ok) throw new Error('Error al eliminar');
       await cargarServicios();
       toast.success('Servicio eliminado');
@@ -96,45 +107,31 @@ const cargarServicios = async () => {
   const abrirModal = (servicio?: Servicio) => {
     if (servicio) {
       setServicioEditando(servicio);
-      setForm({
-        nombre: servicio.nombre,
+      reset({
+        nombreServicio: servicio.nombre,
+        descripcionServicio: servicio.descripcion,
+        precioInicial: servicio.precio,
         duracionEstimadaMinutos: servicio.duracionEstimadaMinutos,
-        precio: servicio.precio,
-        descripcion: servicio.descripcion,
       });
     } else {
       setServicioEditando(null);
-      setForm(servicioInicial);
+      reset({
+        nombreServicio: '',
+        descripcionServicio: '',
+        precioInicial: 0,
+        duracionEstimadaMinutos: 30,
+      });
     }
     setModalAbierto(true);
   };
 
-  const guardar = async () => {
-    if (!form.nombre.trim()) {
-      toast.error('El nombre del servicio no puede estar vacío');
-      return;
-    }
-
-    if (!form.descripcion.trim()) {
-      toast.error('La descripción del servicio no puede estar vacía');
-      return;
-    }
-
-    if (form.precio < 0) {
-      toast.error('El precio inicial debe ser cero o un valor positivo');
-      return;
-    }
-
-    if (form.duracionEstimadaMinutos <= 0) {
-      toast.error('La duración estimada debe ser mayor que cero');
-      return;
-    }
-
+  const onSubmit = async (data: ServicioFormData) => {
+    setGuardando(true);
     const payload = {
-      nombreServicio: form.nombre.trim(),
-      descripcionServicio: form.descripcion.trim(),
-      precioInicial: Number(form.precio),
-      duracionEstimadaMinutos: Number(form.duracionEstimadaMinutos),
+      nombreServicio: data.nombreServicio.trim(),
+      descripcionServicio: data.descripcionServicio.trim(),
+      precioInicial: Number(data.precioInicial),
+      duracionEstimadaMinutos: Number(data.duracionEstimadaMinutos),
     };
 
     try {
@@ -150,23 +147,27 @@ const cargarServicios = async () => {
         body: JSON.stringify(payload),
       });
 
+      if (res.status === 401) {
+        toast.error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+        window.location.href = '/iniciar-sesion';
+        return;
+      }
+
       if (!res.ok) {
-        // Leemos la respuesta de error real del servidor
         const errorDetail = await res.text();
         console.error(`Error del servidor (Código ${res.status}):`, errorDetail);
         throw new Error(`Fallo en el servidor: ${res.status}`);
       }
 
-
-
       await cargarServicios();
       toast.success(servicioEditando ? 'Servicio actualizado' : 'Servicio creado');
       setModalAbierto(false);
       setServicioEditando(null);
-      setForm(servicioInicial);
     } catch (error) {
       console.error(error);
       toast.error('No se pudo guardar el servicio');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -174,8 +175,8 @@ const cargarServicios = async () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="mb-2 text-foreground">Servicios</h2>
-          <p className="text-muted-foreground">Gestiona los servicios ofrecidos</p>
+          <h2 className="mb-2 text-foreground font-bold text-2xl">Servicios</h2>
+          <p className="text-muted-foreground text-sm">Gestiona el catálogo de servicios mecánicos ofrecidos</p>
         </div>
         <Button variant="accent" onClick={() => abrirModal()} className="gap-2">
           <Plus size={18} />
@@ -189,7 +190,7 @@ const cargarServicios = async () => {
             <tr>
               <th className="text-left p-4 text-foreground">Servicio</th>
               <th className="text-left p-4 text-foreground">Duración</th>
-              <th className="text-left p-4 text-foreground">Precio</th>
+              <th className="text-left p-4 text-foreground">Precio Base</th>
               <th className="text-left p-4 text-foreground">Descripción</th>
               <th className="text-right p-4 text-foreground">Acciones</th>
             </tr>
@@ -207,18 +208,22 @@ const cargarServicios = async () => {
                 </td>
                 <td className="p-4 text-muted-foreground">{servicio.duracion}</td>
                 <td className="p-4 text-accent font-semibold">{formatCurrency(servicio.precio)}</td>
-                <td className="p-4 text-muted-foreground text-sm">{servicio.descripcion}</td>
+                <td className="p-4 text-muted-foreground text-sm max-w-xs truncate">{servicio.descripcion}</td>
                 <td className="p-4">
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={() => abrirModal(servicio)}
                       className="p-2 hover:bg-muted rounded-lg transition-colors text-foreground"
+                      title="Editar servicio"
+                      aria-label={`Editar ${servicio.nombre}`}
                     >
                       <Edit2 size={16} />
                     </button>
                     <button
                       onClick={() => eliminar(servicio.id)}
                       className="p-2 hover:bg-destructive/20 rounded-lg transition-colors text-destructive"
+                      title="Eliminar servicio"
+                      aria-label={`Eliminar ${servicio.nombre}`}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -230,55 +235,118 @@ const cargarServicios = async () => {
         </table>
       </div>
 
+      {/* Modal Dialog con validaciones integradas */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <Dialog.Title className="mb-6 text-card-foreground">
+            <Dialog.Title className="mb-6 text-card-foreground text-xl font-bold">
               {servicioEditando ? 'Editar Servicio' : 'Nuevo Servicio'}
             </Dialog.Title>
 
-            <div className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
               <Input
-                label="Nombre del servicio"
-                placeholder="Mantenimiento General"
-                value={form.nombre}
-                onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))}
+                label="Nombre del servicio *"
+                placeholder="Afinamiento de Motor"
+                error={errors.nombreServicio?.message}
+                {...register('nombreServicio', {
+                  required: 'El nombre del servicio no puede estar vacío',
+                  maxLength: {
+                    value: 100,
+                    message: 'El nombre del servicio no debe superar los 100 caracteres',
+                  },
+                  validate: (v) => v.trim().length > 0 || 'El nombre no puede consistir únicamente de espacios',
+                })}
               />
-              <Input
-                label="Duración estimada (minutos)"
-                type="number"
-                placeholder="45"
-                value={form.duracionEstimadaMinutos}
-                onChange={(e) => setForm((prev) => ({ ...prev, duracionEstimadaMinutos: Number(e.target.value) }))}
-              />
-              <Input
-                label="Precio"
-                type="number"
-                placeholder="50"
-                value={form.precio}
-                onChange={(e) => setForm((prev) => ({ ...prev, precio: Number(e.target.value) }))}
-              />
-              <div>
-                <label className="block text-sm mb-2 text-foreground">Descripción</label>
-                <textarea
-                  value={form.descripcion}
-                  onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))}
-                  placeholder="Descripción del servicio..."
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Duración (min) *"
+                  type="number"
+                  placeholder="45"
+                  min={1}
+                  error={errors.duracionEstimadaMinutos?.message}
+                  {...register('duracionEstimadaMinutos', {
+                    required: 'La duración estimada es obligatoria',
+                    valueAsNumber: true,
+                    min: {
+                      value: 1,
+                      message: 'La duración estimada debe ser mayor que cero',
+                    },
+                    validate: (v) => !isNaN(v) && v > 0 || 'La duración estimada debe ser mayor que cero',
+                  })}
+                />
+
+                <Input
+                  label="Precio base (S/.) *"
+                  type="number"
+                  step="0.50"
+                  min={0}
+                  placeholder="50.00"
+                  error={errors.precioInicial?.message}
+                  {...register('precioInicial', {
+                    required: 'El precio inicial es obligatorio',
+                    valueAsNumber: true,
+                    min: {
+                      value: 0,
+                      message: 'El precio inicial debe ser cero o un valor positivo',
+                    },
+                    validate: (v) => !isNaN(v) && v >= 0 || 'El precio inicial debe ser cero o un valor positivo',
+                  })}
                 />
               </div>
-            </div>
 
-            <div className="flex gap-3 mt-6">
-              <Button variant="ghost" className="flex-1" onClick={() => setModalAbierto(false)}>
-                Cancelar
-              </Button>
-              <Button variant="accent" className="flex-1" onClick={guardar}>
-                Guardar
-              </Button>
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="descripcionServicio" className="text-sm font-medium text-foreground">
+                  Descripción del servicio *
+                </label>
+                <textarea
+                  id="descripcionServicio"
+                  rows={3}
+                  placeholder="Detalla qué incluye este servicio (ej. afinamiento completo, cambio de bujía, limpieza de carburador)..."
+                  className={`w-full px-4 py-2.5 bg-input-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none transition-colors ${
+                    errors.descripcionServicio ? 'border-destructive focus:ring-destructive' : 'border-input'
+                  }`}
+                  {...register('descripcionServicio', {
+                    required: 'La descripción del servicio no puede estar vacía',
+                    maxLength: {
+                      value: 255,
+                      message: 'La descripción no debe superar los 255 caracteres',
+                    },
+                    validate: (v) => v.trim().length > 0 || 'La descripción no puede estar compuesta solo de espacios',
+                  })}
+                />
+                {errors.descripcionServicio && (
+                  <p className="text-xs text-destructive flex items-center gap-1 mt-0.5">
+                    <AlertCircle size={12} />
+                    {errors.descripcionServicio.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-6 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => setModalAbierto(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="accent"
+                  className="flex-1"
+                  disabled={guardando}
+                >
+                  {guardando
+                    ? 'Guardando...'
+                    : servicioEditando
+                    ? 'Actualizar'
+                    : 'Guardar'}
+                </Button>
+              </div>
+            </form>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

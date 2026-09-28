@@ -9,6 +9,7 @@ public interface UsuarioService {
     List<Usuario> listarTodos();
     Optional<Usuario> buscarPorId(Long id);
     Optional<Usuario> buscarPorEmail(String email);
+    Optional<Usuario> buscarPorDni(String dni);
     Usuario guardar(Usuario usuario);
     void eliminar(Long id);
 }

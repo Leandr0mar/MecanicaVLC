@@ -31,6 +31,12 @@
         </div>
 
         <div class="form-group">
+            <label>DNI:</label>
+            <input type="text" th:field="*{dni}" maxlength="8" inputmode="numeric" />
+            <p class="error-message" th:if="${#fields.hasErrors('dni')}" th:errors="*{dni}"></p>
+        </div>
+
+        <div class="form-group">
             <label>Celular / Teléfono:</label>
             <input type="text" th:field="*{telefono}" />
             <p class="error-message" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></p>

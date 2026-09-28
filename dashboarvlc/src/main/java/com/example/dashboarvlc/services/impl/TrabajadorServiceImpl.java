@@ -23,7 +23,7 @@ public class TrabajadorServiceImpl implements TrabajadorService {
     @Override @Transactional public Trabajador actualizar(Long id, Trabajador t) {
         return trabajadorRepository.findById(id).map(existente -> {
             existente.setNombre(t.getNombre()); existente.setApellido(t.getApellido());
-            existente.setEmail(t.getEmail()); existente.setEspecialidad(t.getEspecialidad());
+            existente.setDni(t.getDni()); existente.setEmail(t.getEmail()); existente.setEspecialidad(t.getEspecialidad());
             existente.setDisponibilidad(t.getDisponibilidad());
             return trabajadorRepository.save(existente);
         }).orElseThrow(() -> new RuntimeException("Trabajador no encontrado"));

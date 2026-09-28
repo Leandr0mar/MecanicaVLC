@@ -61,6 +61,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/citas/**").authenticated()
                 .anyRequest().authenticated()
             )
+
+            .httpBasic(org.springframework.security.config.Customizer.withDefaults())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, authException) -> {
                     res.setStatus(HttpStatus.UNAUTHORIZED.value());

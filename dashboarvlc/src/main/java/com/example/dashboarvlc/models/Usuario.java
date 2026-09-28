@@ -28,6 +28,11 @@ public abstract class Usuario {
     @Column(unique = true)
     private String email;
 
+    @NotBlank(message = "El DNI no puede estar vacío")
+    @Pattern(regexp = "^\\d{8}$", message = "El DNI debe tener exactamente 8 dígitos numéricos")
+    @Column(unique = true)
+    private String dni;
+
     @NotBlank(message = "La contraseña no puede estar vacía")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // <-- Se recibe, pero NO se expone al frontend
     private String contrasenia;
