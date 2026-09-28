@@ -12,8 +12,8 @@ export const Header = ({ title }: HeaderProps) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
   return (
@@ -37,6 +37,10 @@ export const Header = ({ title }: HeaderProps) => {
           <div className="text-sm">
             <p className="font-medium text-foreground">{user?.nombre || 'Usuario'}</p>
             <p className="text-xs text-muted-foreground capitalize">{user?.rol || 'Rol'}</p>
+            <p className="flex items-center gap-1.5 text-[11px] leading-3 text-emerald-600 dark:text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+              Conectado
+            </p>
           </div>
         </div>
 

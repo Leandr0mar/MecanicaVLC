@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 interface User {
   id: string;
@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<User | null>;
   register: (data: RegisterData) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -45,6 +45,43 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const savedUser = localStorage.getItem('vlc_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  useEffect(() => {
+    if (!user) return;
+
+    let heartbeatEnCurso = false;
+    const enviarHeartbeat = async () => {
+      if (heartbeatEnCurso) return;
+      heartbeatEnCurso = true;
+      try {
+        const response = await fetch(`${API_URL}/api/auth/heartbeat`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (response.status === 401) {
+          localStorage.removeItem('vlc_user');
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Presence heartbeat error:', error);
+      } finally {
+        heartbeatEnCurso = false;
+      }
+    };
+
+    const alCambiarVisibilidad = () => {
+      if (document.visibilityState === 'visible') void enviarHeartbeat();
+    };
+
+    void enviarHeartbeat();
+    const intervalo = window.setInterval(() => void enviarHeartbeat(), 20_000);
+    document.addEventListener('visibilitychange', alCambiarVisibilidad);
+
+    return () => {
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alCambiarVisibilidad);
+    };
+  }, [user]);
 
   const login = async (email: string, password: string): Promise<User | null> => {
     try {
@@ -89,9 +126,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('vlc_user');
+  const logout = async () => {
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('vlc_user');
+    }
   };
 
   return (

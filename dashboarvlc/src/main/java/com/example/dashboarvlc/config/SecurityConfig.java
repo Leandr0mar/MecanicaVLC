@@ -43,7 +43,7 @@ public class SecurityConfig {
             .securityMatcher("/api/**")
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://localhost:5173"));
+                config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
                 config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);
@@ -51,7 +51,9 @@ public class SecurityConfig {
             }))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/registrar").permitAll()
+                .requestMatchers("/api/auth/**").authenticated()
+                .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                 .requestMatchers("/api/categorias/**").authenticated()
                 .requestMatchers("/api/servicios/**").authenticated()
                 .requestMatchers("/api/proveedores/**").authenticated()
@@ -87,7 +89,7 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(request -> {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://localhost:5173"));
+                config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
                 config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);

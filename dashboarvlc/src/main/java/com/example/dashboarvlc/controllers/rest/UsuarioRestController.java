@@ -2,6 +2,7 @@ package com.example.dashboarvlc.controllers.rest;
 
 import com.example.dashboarvlc.models.*;
 import com.example.dashboarvlc.services.*;
+import com.example.dashboarvlc.repositories.SesionActivaRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import jakarta.validation.Valid;
@@ -18,7 +19,6 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/api/usuarios")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 @RequiredArgsConstructor
 public class UsuarioRestController {
 
@@ -28,11 +28,19 @@ public class UsuarioRestController {
     private final AdministradorService administradorService;
     private final PasswordEncoder passwordEncoder; // Inyectamos el encriptador
     private final Validator validator;
+    private final PresenciaService presenciaService;
 
     // Obtener todos los usuarios para la tabla (Spring traerá Clientes, Trabajadores y Admins automáticamente)
     @GetMapping
-    public ResponseEntity<List<Usuario>> listarTodos() {
-        return ResponseEntity.ok(usuarioService.listarTodos());
+    public ResponseEntity<List<UsuarioPresenciaResponse>> listarTodos() {
+        Map<Long, SesionActivaRepository.ResumenPresencia> presenciaPorUsuario = new java.util.HashMap<>();
+        for (SesionActivaRepository.ResumenPresencia resumen : presenciaService.obtenerResumen()) {
+            presenciaPorUsuario.put(resumen.getUsuarioId(), resumen);
+        }
+        List<UsuarioPresenciaResponse> usuarios = usuarioService.listarTodos().stream()
+                .map(usuario -> UsuarioPresenciaResponse.desde(usuario, presenciaPorUsuario.get(usuario.getIdUsuario())))
+                .toList();
+        return ResponseEntity.ok(usuarios);
     }
 
     @DeleteMapping("/{id}")

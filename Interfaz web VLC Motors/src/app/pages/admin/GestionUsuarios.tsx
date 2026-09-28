@@ -127,11 +127,13 @@ export const GestionUsuarios = () => {
 
   useEffect(() => {
     cargarUsuarios();
+    const intervalo = window.setInterval(() => cargarUsuarios(false), 15_000);
+    return () => window.clearInterval(intervalo);
   }, []);
 
-  const cargarUsuarios = async () => {
+  const cargarUsuarios = async (mostrarCarga = true) => {
     try {
-      setLoading(true);
+      if (mostrarCarga) setLoading(true);
       const res = await fetch(`${API_URL}/api/usuarios`, { credentials: 'include' });
       if (res.status === 401) {
         window.location.href = '/iniciar-sesion';
@@ -142,7 +144,7 @@ export const GestionUsuarios = () => {
     } catch {
       toast.error('Error al cargar la lista de usuarios');
     } finally {
-      setLoading(false);
+      if (mostrarCarga) setLoading(false);
     }
   };
 
@@ -352,7 +354,27 @@ export const GestionUsuarios = () => {
                           {usuario.nombre} {usuario.apellido}
                         </h4>
                         <p className="text-xs text-muted-foreground">{usuario.email}</p>
-                        <p className="text-xs text-muted-foreground">DNI: {usuario.dni}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Registro: {usuario.fechaRegistro
+                            ? new Date(usuario.fechaRegistro).toLocaleDateString('es-PE')
+                            : 'Sin fecha'}
+                        </p>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 rounded-full ${usuario.conectado ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`}
+                            aria-hidden="true"
+                          />
+                          <span className={`text-xs ${usuario.conectado ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                            {usuario.conectado ? 'Conectado' : 'Desconectado'}
+                          </span>
+                        </div>
+                        {usuario.ultimaActividad && (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            Última actividad: {new Date(usuario.ultimaActividad).toLocaleString('es-PE', {
+                              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                            })}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -364,14 +386,27 @@ export const GestionUsuarios = () => {
                           Teléfono: {usuario.telefono || 'Sin registrar'}
                         </p>
                         <p className="text-xs text-muted-foreground">
+                          Dirección: {usuario.direccion || 'Sin registrar'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
                           Unidad: {usuario.marcaMototaxi || '-'} {usuario.modeloMototaxi || '-'}{' '}
                           ({usuario.placaMototaxi || 'Sin placa'})
                         </p>
                       </>
                     )}
                     {usuario.rol === 2 && (
-                      <p className="text-sm text-muted-foreground">
-                        Especialidad: {usuario.especialidad || 'General'}
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          Especialidad: {usuario.especialidad || 'Sin registrar'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Disponibilidad: {usuario.disponibilidad ? 'Disponible' : 'No disponible'}
+                        </p>
+                      </>
+                    )}
+                    {usuario.rol === 1 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nivel de acceso: {usuario.nivelAcceso ?? 'Sin asignar'}
                       </p>
                     )}
 
