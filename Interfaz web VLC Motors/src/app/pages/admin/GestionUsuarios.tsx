@@ -111,10 +111,12 @@ export const GestionUsuarios = () => {
     watch,
     setValue,
     reset,
+    unregister,
     formState: { errors },
   } = useForm<UsuarioFormData>({
     mode: 'onBlur',             // Valida cuando el usuario termina de escribir y sale del campo
     reValidateMode: 'onChange', // Limpia el error al instante en cuanto se corrige
+    shouldUnregister: true,
     defaultValues: {
       rol: 3,
       disponibilidad: true,
@@ -164,6 +166,16 @@ export const GestionUsuarios = () => {
   };
 
   const abrirModal = (usuario?: any) => {
+    unregister([
+      'contrasenia',
+      'telefono',
+      'direccion',
+      'placaMototaxi',
+      'marcaMototaxi',
+      'modeloMototaxi',
+      'especialidad',
+      'disponibilidad',
+    ]);
     setUsuarioEditando(usuario ?? null);
 
     // Precarga o limpia el formulario con react-hook-form
@@ -452,7 +464,19 @@ export const GestionUsuarios = () => {
               {usuarioEditando ? 'Editar Usuario' : 'Nuevo Usuario'}
             </Dialog.Title>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <form
+              onSubmit={handleSubmit(onSubmit, (formErrors) => {
+                console.warn('No se envió el formulario de usuario:', formErrors);
+                const primerError = Object.values(formErrors)[0]?.message;
+                toast.error(
+                  typeof primerError === 'string'
+                    ? primerError
+                    : 'Revisa los campos obligatorios del formulario'
+                );
+              })}
+              className="space-y-4"
+              noValidate
+            >
               
               {/* Nombres y Apellidos */}
               <div className="grid grid-cols-2 gap-4">
@@ -548,6 +572,9 @@ export const GestionUsuarios = () => {
                     <option value={1}>Administrador (Control total)</option>
                   </select>
                 </div>
+              )}
+              {usuarioEditando && (
+                <input type="hidden" {...register('rol', { valueAsNumber: true })} />
               )}
 
               {/* Sub-formulario Cliente (Rol 3) */}
