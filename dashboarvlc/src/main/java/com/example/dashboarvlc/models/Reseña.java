@@ -30,7 +30,7 @@ public class Reseña {
     @JoinColumn(name = "id_cita", nullable = false)
     @NotNull(message = "La cita asociada es obligatoria")
     // Escudo para evitar bucles infinitos al convertir a JSON
-    @JsonIgnoreProperties({"reseña", "cliente", "trabajador", "hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({"reseña", "trabajador", "hibernateLazyInitializer", "handler"})
     private Cita cita;
 
     // Asigna la fecha automáticamente al crear la reseña en la base de datos

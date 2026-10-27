@@ -23,8 +23,20 @@ export const LoginPage = () => {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginForm>();
+
+  const cuentasPrueba = [
+    { rol: '👤 Cliente', email: 'vladimir@gmail.com', password: '@Ismael123' },
+    { rol: '🔧 Trabajador', email: 'david@gmail.com', password: 'David123' },
+    { rol: '⚙️ Admin', email: 'leandro22.admin@vlc.com', password: 'LeandrOmar' },
+  ];
+
+  const completarCredenciales = (email: string, password: string) => {
+    setValue('email', email, { shouldValidate: true, shouldDirty: true });
+    setValue('password', password, { shouldValidate: true, shouldDirty: true });
+  };
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
@@ -42,11 +54,9 @@ export const LoginPage = () => {
         } else {
           navigate('/cliente');
         }
-      } else {
-        toast.error('Credenciales incorrectas');
       }
     } catch (error) {
-      toast.error('Error al iniciar sesión. Intenta nuevamente.');
+      toast.error(error instanceof Error ? error.message : 'No se pudo iniciar sesión. Intenta nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +74,7 @@ export const LoginPage = () => {
         transition={{ duration: 0.5 }}
         className="flex-1 flex items-center justify-center p-8"
       >
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-lg">
           <div className="mb-8 text-center">
             <div className="inline-flex items-center gap-2 mb-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center shadow-lg">
@@ -138,14 +148,33 @@ export const LoginPage = () => {
             </form>
 
             <div className="mt-6 pt-6 border-t border-border">
-              <div className="flex items-start gap-2 mb-3 p-3 bg-muted/50 rounded-lg">
+              <div className="-mx-2 flex items-start gap-2 mb-3 p-3 bg-muted/50 rounded-lg">
                 <AlertCircle size={16} className="text-accent mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-muted-foreground">
+                <div className="min-w-0 flex-1 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground mb-1">Cuentas de prueba:</p>
                   <div className="space-y-1">
-                    <p>👤 Cliente: <span className="text-accent">vladimir@gmail.com</span> / <span className="text-accent">@Ismael123</span></p>
-                    <p>🔧 Trabajador: <span className="text-accent">david@gmail.com</span> / <span className="text-accent">David123</span></p>
-                    <p>⚙️ Admin: <span className="text-accent">leandro22.admin@vlc.com</span> / <span className="text-accent">LeandrOmar</span></p>
+                    {cuentasPrueba.map((cuenta) => (
+                      <div key={cuenta.email} className="flex min-w-0 items-center gap-2 border-b border-border/50 py-1 last:border-0">
+                        <p className="w-[76px] shrink-0 whitespace-nowrap">
+                          {cuenta.rol}:
+                        </p>
+                        <p className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap">
+                          <span className="text-accent">{cuenta.email}</span>
+                          <span className="px-1">/</span>
+                          <span className="text-accent">{cuenta.password}</span>
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0 px-3"
+                          onClick={() => completarCredenciales(cuenta.email, cuenta.password)}
+                          aria-label={`Usar cuenta de ${cuenta.rol.replace(/^\p{Emoji_Presentation}\s*/u, '')}`}
+                        >
+                          Usar
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

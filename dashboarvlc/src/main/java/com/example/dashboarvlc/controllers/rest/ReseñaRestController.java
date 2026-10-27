@@ -20,6 +20,11 @@ public class ReseñaRestController {
 
     private final ReseñaServiceImpl reseñaService;
 
+    @GetMapping
+    public ResponseEntity<List<Reseña>> listarTodas() {
+        return ResponseEntity.ok(reseñaService.listarTodas());
+    }
+
     @PostMapping
     public ResponseEntity<?> crearReseña(@RequestBody ReseñaDTO dto, Principal principal) {
         if (principal == null) {

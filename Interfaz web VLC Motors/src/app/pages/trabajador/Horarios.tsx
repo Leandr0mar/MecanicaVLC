@@ -33,7 +33,7 @@ export const Horarios = () => {
   };
 
   const guardarCambios = () => {
-    toast.success('Horarios actualizados exitosamente');
+    toast.info('Los horarios cambiaron en esta vista, pero todavía no se guardan en el servidor.');
   };
 
   return (

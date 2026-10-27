@@ -18,6 +18,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Override @Transactional(readOnly = true) public Optional<Usuario> buscarPorId(Long id) { return usuarioRepository.findById(id); }
     @Override @Transactional(readOnly = true) public Optional<Usuario> buscarPorEmail(String email) { return usuarioRepository.findByEmail(email); }
     @Override @Transactional(readOnly = true) public Optional<Usuario> buscarPorDni(String dni) { return usuarioRepository.findByDni(dni); }
+    @Override @Transactional(readOnly = true) public Optional<Usuario> buscarPorNumeroDocumento(String numeroDocumento) { return usuarioRepository.findByNumeroDocumento(numeroDocumento); }
     @Override @Transactional public Usuario guardar(Usuario usuario) { return usuarioRepository.save(usuario); }
     @Override @Transactional public void eliminar(Long id) { usuarioRepository.deleteById(id); }
 }

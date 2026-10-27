@@ -23,8 +23,10 @@ export const Pedidos = () => {
       if (!res.ok) throw new Error('Error al cargar la información');
       
       const data = await res.json();
-      // Ordenamos para que los pedidos más recientes aparezcan al inicio de la lista
-      const ordenados = data.sort((a: any, b: any) => b.idReserva - a.idReserva);
+      const prioridad = (estado: string) => ({ PENDIENTE: 0, RECOGIDO: 1, CANCELADO: 2 }[estado?.toUpperCase()] ?? 3);
+      const ordenados = data.sort((a: any, b: any) =>
+        prioridad(a.estadoRecojo) - prioridad(b.estadoRecojo) || b.idReserva - a.idReserva
+      );
       setPedidos(ordenados);
     } catch (error) {
       toast.error('Error al cargar el historial de pedidos');

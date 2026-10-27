@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
 // Se añadió el icono Download
-import { Calendar, Clock, Edit2, Trash2, AlertCircle, PlayCircle, CheckCircle, XCircle, Filter, Wrench, Download } from 'lucide-react';
+import { Calendar, Clock, Edit2, Trash2, AlertCircle, PlayCircle, CheckCircle, XCircle, Filter, Wrench, Download, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
 // Importamos la librería para Excel
 import * as XLSX from 'xlsx';
+import { ConfirmDeleteDialog } from '../../components/ui/ConfirmDeleteDialog';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
 
 interface Cita {
   idCita: number;
@@ -16,6 +18,10 @@ interface Cita {
   hora: string;
   estado: string;
   montoInicial: number;
+  pagoRegistrado?: boolean;
+  montoPagado?: number;
+  metodoPago?: string;
+  fechaPago?: string;
   cliente: { nombre: string; apellido: string; telefono: string };
   trabajador?: { idUsuario: number; nombre: string; apellido: string };
   servicio: { nombreServicio: string };
@@ -27,12 +33,16 @@ export const GestionCitas = () => {
   const [loading, setLoading] = useState(true);
   
   const [filtroEstado, setFiltroEstado] = useState<string | 'TODAS'>('TODAS');
+  const [busqueda, setBusqueda] = useState('');
   
   // Estados para el Modal
   const [modalAbierto, setModalAbierto] = useState(false);
   const [citaEditando, setCitaEditando] = useState<Cita | null>(null);
   const [nuevoEstado, setNuevoEstado] = useState<string>('');
   const [nuevoTrabajadorId, setNuevoTrabajadorId] = useState<number>(0);
+  const [citaPago, setCitaPago] = useState<Cita | null>(null);
+  const [montoPago, setMontoPago] = useState('');
+  const [metodoPago, setMetodoPago] = useState('EFECTIVO');
 
   useEffect(() => {
     cargarDatos();
@@ -51,9 +61,22 @@ export const GestionCitas = () => {
       
       if (resCitas.ok) {
         const dataCitas = await resCitas.json();
-        const ordenadas = dataCitas.sort((a: Cita, b: Cita) => 
-          new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()
-        );
+        const prioridad = (cita: Cita) => {
+          const estado = cita.estado?.toUpperCase();
+          if (estado === 'PENDIENTE') return 0;
+          if (estado === 'EN_PROGRESO') return 1;
+          if (estado === 'COMPLETADA' && !cita.pagoRegistrado) return 2;
+          if (estado === 'COMPLETADA') return 3;
+          if (estado === 'CANCELADA') return 4;
+          return 5;
+        };
+        const ordenadas = dataCitas.sort((a: Cita, b: Cita) => {
+          const diferenciaEstado = prioridad(a) - prioridad(b);
+          if (diferenciaEstado !== 0) return diferenciaEstado;
+          const fechaA = new Date(`${a.fecha}T${a.hora}`).getTime();
+          const fechaB = new Date(`${b.fecha}T${b.hora}`).getTime();
+          return prioridad(a) <= 1 ? fechaA - fechaB : fechaB - fechaA;
+        });
         setCitas(ordenadas);
       }
 
@@ -70,15 +93,17 @@ export const GestionCitas = () => {
   };
 
   const eliminar = async (id: number) => {
-    if (!window.confirm('¿Está seguro de eliminar esta cita permanentemente?')) return;
     try {
       const res = await fetch(`${API_URL}/api/citas/${id}`, { method: 'DELETE', credentials: 'include' });
       if (res.status === 401) return (window.location.href = '/iniciar-sesion');
-      if (!res.ok) throw new Error('Error');
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'No se pudo eliminar la cita');
+      }
       await cargarDatos();
       toast.success('Cita eliminada correctamente');
     } catch (error) {
-      toast.error('No se pudo eliminar la cita');
+      toast.error(error instanceof Error ? error.message : 'No se pudo eliminar la cita');
     }
   };
 
@@ -130,17 +155,45 @@ export const GestionCitas = () => {
     }
   };
 
-  const getEstadoUI = (estado: string) => {
+  const registrarPago = async () => {
+    if (!citaPago || montoPago.trim() === '' || !Number.isFinite(Number(montoPago)) || Number(montoPago) < 0) {
+      toast.error('Ingresa un monto válido para el pago presencial');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/api/citas/${citaPago.idCita}/pago`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ montoPagado: Number(montoPago), metodoPago }),
+      });
+      if (response.status === 401) return (window.location.href = '/iniciar-sesion');
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error || 'No se pudo registrar el pago');
+      toast.success('Pago presencial registrado');
+      setCitaPago(null);
+      await cargarDatos();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo registrar el pago');
+    }
+  };
+
+  const getEstadoUI = (cita: Cita) => {
+    const estado = cita.estado;
     switch (estado?.toUpperCase()) {
       case 'PENDIENTE': return { icon: AlertCircle, color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-400', label: 'Pendiente' };
       case 'EN_PROGRESO': return { icon: PlayCircle, color: 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400', label: 'En Progreso' };
-      case 'COMPLETADA': return { icon: CheckCircle, color: 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400', label: 'Completada' };
+      case 'COMPLETADA': return cita.pagoRegistrado
+        ? { icon: CheckCircle, color: 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400', label: 'Completada' }
+        : { icon: Banknote, color: 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400', label: 'Completada · pendiente de pago' };
       case 'CANCELADA': return { icon: XCircle, color: 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-400', label: 'Cancelada' };
       default: return { icon: AlertCircle, color: 'bg-muted text-muted-foreground', label: estado };
     }
   };
 
-  const citasFiltradas = citas.filter(cita => filtroEstado === 'TODAS' || cita.estado === filtroEstado);
+  const citasFiltradas = citas.filter(cita =>
+    (filtroEstado === 'TODAS' || cita.estado === filtroEstado) && matchesAdminSearch(cita, busqueda)
+  );
 
   // --- NUEVA LÓGICA: EXPORTAR A EXCEL ---
   const exportarExcel = () => {
@@ -158,6 +211,10 @@ export const GestionCitas = () => {
         'Teléfono': cita.cliente?.telefono,
         'Servicio': cita.servicio?.nombreServicio,
         'Monto Inicial (S/.)': cita.montoInicial || 0,
+        'Pago Registrado': cita.pagoRegistrado ? 'Sí' : 'No',
+        'Monto Cobrado (S/.)': cita.montoPagado ?? '',
+        'Método de Pago': cita.metodoPago || '',
+        'Fecha de Pago': cita.fechaPago || '',
         'Trabajador Asignado': cita.trabajador ? `${cita.trabajador.nombre} ${cita.trabajador.apellido}` : 'Sin asignar'
       };
     });
@@ -191,6 +248,8 @@ export const GestionCitas = () => {
           <p className="text-muted-foreground">Monitor general y asignación de personal</p>
         </div>
         
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar por cliente, servicio, trabajador o fecha..." className="xl:mx-6" />
+
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           {/* --- BOTÓN DE EXPORTACIÓN --- */}
           <Button variant="secondary" onClick={exportarExcel} className="gap-2 bg-green-600/10 text-green-600 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 border border-green-600/20 h-10">
@@ -222,7 +281,7 @@ export const GestionCitas = () => {
               <tr>
                 <th className="text-left p-4 text-foreground">Fecha y Hora</th>
                 <th className="text-left p-4 text-foreground">Cliente</th>
-                <th className="text-left p-4 text-foreground">Servicio & Monto</th>
+                <th className="text-left p-4 text-foreground">Servicio y pago</th>
                 <th className="text-left p-4 text-foreground">Trabajador Asignado</th>
                 <th className="text-center p-4 text-foreground">Estado</th>
                 <th className="text-right p-4 text-foreground">Acciones</th>
@@ -230,7 +289,7 @@ export const GestionCitas = () => {
             </thead>
             <tbody>
               {citasFiltradas.map((cita) => {
-                const ui = getEstadoUI(cita.estado);
+                const ui = getEstadoUI(cita);
                 const Icon = ui.icon;
                 return (
                   <tr key={cita.idCita} className="border-t border-border hover:bg-muted/50 transition-colors">
@@ -250,7 +309,14 @@ export const GestionCitas = () => {
                     </td>
                     <td className="p-4">
                       <div className="text-sm font-medium text-foreground">{cita.servicio?.nombreServicio}</div>
-                      <div className="text-xs text-accent font-bold mt-1">{formatCurrency(cita.montoInicial || 0)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Referencial: {formatCurrency(cita.montoInicial || 0)}</div>
+                      {cita.pagoRegistrado ? (
+                        <div className="text-xs text-green-600 dark:text-green-400 font-semibold mt-1">
+                          Cobrado: {formatCurrency(cita.montoPagado || 0)} · {cita.metodoPago?.replace('_', ' ').toLowerCase()}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">{cita.estado?.toUpperCase() === 'COMPLETADA' ? 'Servicio completado · pago presencial pendiente' : 'Sin pago registrado'}</div>
+                      )}
                     </td>
                     <td className="p-4">
                       {cita.trabajador ? (
@@ -272,12 +338,24 @@ export const GestionCitas = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2 justify-end">
+                        {cita.estado === 'COMPLETADA' && !cita.pagoRegistrado && (
+                          <button
+                            onClick={() => { setCitaPago(cita); setMontoPago(String(cita.montoInicial ?? '')); setMetodoPago('EFECTIVO'); }}
+                            className="p-2 rounded-lg text-green-700 hover:bg-green-500/10 dark:text-green-400"
+                            title="Registrar pago presencial"
+                            aria-label={`Registrar pago de la cita ${cita.idCita}`}
+                          >
+                            <Banknote size={16} />
+                          </button>
+                        )}
                         <button onClick={() => abrirModalEdicion(cita)} className="p-2 hover:bg-muted rounded-lg text-foreground transition-colors" title="Editar Estado y Trabajador">
                           <Edit2 size={16} />
                         </button>
-                        <button onClick={() => eliminar(cita.idCita)} className="p-2 hover:bg-destructive/20 text-destructive rounded-lg transition-colors" title="Eliminar Cita">
-                          <Trash2 size={16} />
-                        </button>
+                        <ConfirmDeleteDialog itemName={`la cita del ${cita.fecha}`} onConfirm={() => eliminar(cita.idCita)}>
+                          <button className="p-2 hover:bg-destructive/20 text-destructive rounded-lg transition-colors" title="Eliminar Cita" aria-label={`Eliminar cita del ${cita.fecha}`}>
+                            <Trash2 size={16} />
+                          </button>
+                        </ConfirmDeleteDialog>
                       </div>
                     </td>
                   </tr>
@@ -288,11 +366,43 @@ export const GestionCitas = () => {
         )}
       </div>
 
+      <Dialog.Root open={Boolean(citaPago)} onOpenChange={(open) => !open && setCitaPago(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <Dialog.Title className="mb-2 text-lg font-bold text-card-foreground">Registrar pago presencial</Dialog.Title>
+            <p className="mb-5 text-sm text-muted-foreground">Registra el importe recibido en el taller por {citaPago?.servicio?.nombreServicio}.</p>
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-foreground">
+                Monto recibido (S/)
+                <input type="number" min="0" step="0.01" value={montoPago} onChange={(event) => setMontoPago(event.target.value)} className="mt-1 w-full rounded-lg border border-input bg-input-background px-3 py-2.5 text-foreground" />
+              </label>
+              <label className="block text-sm font-medium text-foreground">
+                Método de pago
+                <select value={metodoPago} onChange={(event) => setMetodoPago(event.target.value)} className="mt-1 w-full rounded-lg border border-input bg-input-background px-3 py-2.5 text-foreground">
+                  <option value="EFECTIVO">Efectivo</option>
+                  <option value="TARJETA">Tarjeta en el local</option>
+                  <option value="TRANSFERENCIA">Transferencia</option>
+                  <option value="YAPE">Yape</option>
+                  <option value="PLIN">Plin</option>
+                  <option value="BILLETERA_DIGITAL">Billetera digital</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </label>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <Button variant="ghost" className="flex-1" onClick={() => setCitaPago(null)}>Cancelar</Button>
+              <Button variant="accent" className="flex-1" onClick={registrarPago}>Confirmar pago</Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       {/* MODAL HÍBRIDO (ESTADO + TRABAJADOR) */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
             <Dialog.Title className="mb-2 text-card-foreground text-lg font-bold">
               Gestionar Cita Híbrida
             </Dialog.Title>
@@ -316,10 +426,18 @@ export const GestionCitas = () => {
                     onChange={(e) => setNuevoEstado(e.target.value)}
                     className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="PENDIENTE">Pendiente</option>
-                    <option value="EN_PROGRESO">En Progreso</option>
-                    <option value="COMPLETADA">Completada</option>
-                    <option value="CANCELADA">Cancelada</option>
+                    {citaEditando.estado === 'PENDIENTE' && <>
+                      <option value="PENDIENTE">Pendiente</option>
+                      <option value="EN_PROGRESO">En Progreso</option>
+                      <option value="CANCELADA">Cancelada</option>
+                    </>}
+                    {citaEditando.estado === 'EN_PROGRESO' && <>
+                      <option value="EN_PROGRESO">En Progreso</option>
+                      <option value="COMPLETADA">Completada</option>
+                      <option value="CANCELADA">Cancelada</option>
+                    </>}
+                    {citaEditando.estado === 'COMPLETADA' && <option value="COMPLETADA">Completada</option>}
+                    {citaEditando.estado === 'CANCELADA' && <option value="CANCELADA">Cancelada</option>}
                   </select>
                 </div>
 

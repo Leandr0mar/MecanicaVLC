@@ -16,7 +16,9 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Input } from '../../components/ui/input';
 import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
+import { ConfirmDeleteDialog } from '../../components/ui/ConfirmDeleteDialog';
 import * as XLSX from 'xlsx';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
 
 interface ProductoFormData {
   nombre: string;
@@ -46,6 +48,7 @@ export const Productos = () => {
   const [filtroMarca, setFiltroMarca] = useState<string | 'TODAS'>('TODAS');
   const [filtroProveedor, setFiltroProveedor] = useState<number | 'TODOS'>('TODOS');
   const [filtroStock, setFiltroStock] = useState<string | 'TODOS'>('TODOS');
+  const [busqueda, setBusqueda] = useState('');
 
   // React Hook Form con estrategia profesional onBlur + onChange
   const {
@@ -199,7 +202,7 @@ export const Productos = () => {
     else if (filtroStock === 'POCO_STOCK') cumpleStock = producto.stock > 0 && producto.stock <= 5;
     else if (filtroStock === 'EN_STOCK') cumpleStock = producto.stock > 5;
 
-    return cumpleCategoria && cumpleMarca && cumpleProveedor && cumpleStock;
+    return cumpleCategoria && cumpleMarca && cumpleProveedor && cumpleStock && matchesAdminSearch(producto, busqueda);
   });
 
   // Exportar Excel
@@ -250,11 +253,13 @@ export const Productos = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h2 className="mb-2 text-foreground font-bold text-2xl">Inventario de Repuestos</h2>
           <p className="text-muted-foreground text-sm">Gestiona repuestos, precios y existencias para mototaxis</p>
         </div>
+
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar repuesto por nombre, código, marca..." className="xl:mx-6" />
 
         <div className="flex items-center gap-3">
           <Button
@@ -462,14 +467,11 @@ export const Productos = () => {
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button
-                        onClick={() => eliminar(producto.idProducto)}
-                        className="p-2 hover:bg-destructive/20 text-destructive rounded-lg transition-colors"
-                        title="Eliminar producto"
-                        aria-label={`Eliminar ${producto.nombre}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <ConfirmDeleteDialog itemName={`el producto «${producto.nombre}»`} onConfirm={() => eliminar(producto.idProducto)}>
+                        <button className="p-2 hover:bg-destructive/20 text-destructive rounded-lg transition-colors" title="Eliminar producto" aria-label={`Eliminar ${producto.nombre}`}>
+                          <Trash2 size={16} />
+                        </button>
+                      </ConfirmDeleteDialog>
                     </div>
                   </td>
                 </tr>
@@ -482,8 +484,8 @@ export const Productos = () => {
       {/* Modal Dialog con validaciones integradas */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <Dialog.Title className="mb-6 text-card-foreground text-xl font-bold">
               {productoEditando ? 'Editar Producto' : 'Nuevo Producto'}
             </Dialog.Title>

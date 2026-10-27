@@ -37,10 +37,16 @@ export const AgendaCitas = () => {
   const dd = String(hoy.getDate()).padStart(2, '0');
   const fechaHoyStr = `${yyyy}-${mm}-${dd}`; // Formato YYYY-MM-DD para igualar a la BD
 
+  // Una cita completada ya no cuenta como carga futura ni como cita pendiente en las métricas.
+  const citasNoCompletadas = citas.filter((cita) => cita.estado?.toUpperCase() !== 'COMPLETADA');
+
   // 1. Filtrar las citas estrictamente de HOY
   const citasHoy = citas
     .filter(c => c.fecha === fechaHoyStr)
-    .sort((a, b) => a.hora.localeCompare(b.hora));
+    .sort((a, b) => {
+      const prioridad = (estado: string) => ({ PENDIENTE: 0, EN_PROGRESO: 1, COMPLETADA: 2, CANCELADA: 3 }[estado?.toUpperCase()] ?? 4);
+      return prioridad(a.estado) - prioridad(b.estado) || a.hora.localeCompare(b.hora);
+    });
 
   // 2. Generar el resumen de los próximos 7 días
   const citasSemana = [];
@@ -53,14 +59,14 @@ export const AgendaCitas = () => {
     const iterD = String(fechaIteracion.getDate()).padStart(2, '0');
     const fechaStr = `${iterY}-${iterM}-${iterD}`;
 
-    const cantidadCitas = citas.filter(c => c.fecha === fechaStr).length;
+    const cantidadCitas = citasNoCompletadas.filter(c => c.fecha === fechaStr).length;
     citasSemana.push({ fecha: fechaStr, cantidad: cantidadCitas });
   }
 
   // 3. Calcular Estadísticas
   const totalHoy = citasHoy.length;
   
-  const totalSemana = citas.filter(c => {
+  const totalSemana = citasNoCompletadas.filter(c => {
     const cDate = new Date(c.fecha + 'T00:00:00');
     const limit = new Date(hoy);
     limit.setDate(limit.getDate() + 7);
@@ -69,7 +75,7 @@ export const AgendaCitas = () => {
     return cDate >= inicio && cDate <= limit;
   }).length;
 
-  const totalMes = citas.filter(c => c.fecha.startsWith(`${yyyy}-${mm}`)).length;
+  const totalMes = citasNoCompletadas.filter(c => c.fecha.startsWith(`${yyyy}-${mm}`)).length;
 
   // Renderizado visual de estado
   const getEstadoIcon = (estado: string) => {

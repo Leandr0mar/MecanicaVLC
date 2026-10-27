@@ -13,6 +13,9 @@ public record UsuarioPresenciaResponse(
         String nombre,
         String apellido,
         String dni,
+        String tipoDocumento,
+        String numeroDocumento,
+        Boolean activo,
         String email,
         Integer rol,
         LocalDateTime fechaRegistro,
@@ -35,6 +38,8 @@ public record UsuarioPresenciaResponse(
 
         return new UsuarioPresenciaResponse(
                 usuario.getIdUsuario(), usuario.getNombre(), usuario.getApellido(), usuario.getDni(),
+                usuario.getTipoDocumento(), usuario.getNumeroDocumento(),
+                usuario.getActivo(),
                 usuario.getEmail(), usuario.getRol(), usuario.getFechaRegistro(),
                 cliente == null ? null : cliente.getTelefono(),
                 cliente == null ? null : cliente.getDireccion(),

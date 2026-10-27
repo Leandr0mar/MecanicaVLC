@@ -7,6 +7,8 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Input } from '../../components/ui/input';
 import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
+import { ConfirmDeleteDialog } from '../../components/ui/ConfirmDeleteDialog';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
 
 interface Servicio {
   id: number;
@@ -29,6 +31,8 @@ export const Servicios = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [servicioEditando, setServicioEditando] = useState<Servicio | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const serviciosFiltrados = servicios.filter((servicio) => matchesAdminSearch(servicio, busqueda));
 
   // Configuración de validación reactiva profesional
   const {
@@ -173,12 +177,13 @@ export const Servicios = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="mb-2 text-foreground font-bold text-2xl">Servicios</h2>
           <p className="text-muted-foreground text-sm">Gestiona el catálogo de servicios mecánicos ofrecidos</p>
         </div>
-        <Button variant="accent" onClick={() => abrirModal()} className="gap-2">
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar servicio por nombre o descripción..." className="sm:mx-6" />
+        <Button variant="accent" onClick={() => abrirModal()} className="gap-2 shrink-0">
           <Plus size={18} />
           Nuevo Servicio
         </Button>
@@ -196,7 +201,7 @@ export const Servicios = () => {
             </tr>
           </thead>
           <tbody>
-            {servicios.map((servicio) => (
+            {serviciosFiltrados.map((servicio) => (
               <tr key={servicio.id} className="border-t border-border hover:bg-muted/50 transition-colors">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
@@ -219,14 +224,11 @@ export const Servicios = () => {
                     >
                       <Edit2 size={16} />
                     </button>
-                    <button
-                      onClick={() => eliminar(servicio.id)}
-                      className="p-2 hover:bg-destructive/20 rounded-lg transition-colors text-destructive"
-                      title="Eliminar servicio"
-                      aria-label={`Eliminar ${servicio.nombre}`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <ConfirmDeleteDialog itemName={`el servicio «${servicio.nombre}»`} onConfirm={() => eliminar(servicio.id)}>
+                      <button className="p-2 hover:bg-destructive/20 rounded-lg transition-colors text-destructive" title="Eliminar servicio" aria-label={`Eliminar ${servicio.nombre}`}>
+                        <Trash2 size={16} />
+                      </button>
+                    </ConfirmDeleteDialog>
                   </div>
                 </td>
               </tr>
@@ -238,8 +240,8 @@ export const Servicios = () => {
       {/* Modal Dialog con validaciones integradas */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
             <Dialog.Title className="mb-6 text-card-foreground text-xl font-bold">
               {servicioEditando ? 'Editar Servicio' : 'Nuevo Servicio'}
             </Dialog.Title>

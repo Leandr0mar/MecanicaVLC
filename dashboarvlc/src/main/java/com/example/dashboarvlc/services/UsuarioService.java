@@ -10,6 +10,7 @@ public interface UsuarioService {
     Optional<Usuario> buscarPorId(Long id);
     Optional<Usuario> buscarPorEmail(String email);
     Optional<Usuario> buscarPorDni(String dni);
+    Optional<Usuario> buscarPorNumeroDocumento(String numeroDocumento);
     Usuario guardar(Usuario usuario);
     void eliminar(Long id);
 }

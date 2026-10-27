@@ -58,7 +58,7 @@ export default function App() {
             </Routes>
 
             <Toaster
-              position="top-right"
+              position="bottom-right"
               toastOptions={{
                 style: {
                   background: 'var(--card)',

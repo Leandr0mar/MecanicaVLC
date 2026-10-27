@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
-import { Star, User, MessageSquareOff } from 'lucide-react';
+import { Star, User, MessageSquareOff, Mail, Phone, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { API_URL } from '../../context/AuthContext';
@@ -96,14 +96,24 @@ export const ReseñasTrabajador = () => {
                           <User size={20} className="text-accent" />
                         </div>
                         <div>
-                          {/* Extraemos el nombre del cliente desde la Cita asociada */}
                           <h4 className="font-bold text-foreground">
-                            {reseña.cita?.cliente?.nombre} {reseña.cita?.cliente?.apellido}
+                            {reseña.cita?.cliente?.nombre || 'Cliente'} {reseña.cita?.cliente?.apellido || ''}
                           </h4>
-                          {/* Extraemos el servicio desde la Cita asociada */}
                           <p className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded inline-block mt-1">
                             Servicio: {reseña.cita?.servicio?.nombreServicio}
                           </p>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            {reseña.cita?.cliente?.email && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <Mail size={13} /> {reseña.cita.cliente.email}
+                              </span>
+                            )}
+                            {reseña.cita?.cliente?.telefono && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <Phone size={13} /> {reseña.cita.cliente.telefono}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -119,6 +129,11 @@ export const ReseñasTrabajador = () => {
                         <p className="text-xs font-medium text-muted-foreground">
                           {new Date(reseña.fechaReseña).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
+                        {reseña.cita?.fecha && (
+                          <p className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                            <CalendarDays size={12} /> Cita: {new Date(`${reseña.cita.fecha}T00:00:00`).toLocaleDateString('es-ES')}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 p-3 bg-background border border-border/50 rounded-lg">

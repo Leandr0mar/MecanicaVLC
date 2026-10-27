@@ -14,8 +14,13 @@ public class ClienteRegistrationRequest {
     private String apellido;
 
     @NotBlank
-    @Pattern(regexp = "^\\d{8}$", message = "El DNI debe tener exactamente 8 dígitos numéricos")
-    private String dni;
+    @Pattern(regexp = "^(DNI|CE)$", message = "Selecciona DNI o CE")
+    private String tipoDocumento;
+
+    @NotBlank
+    @Size(max = 20)
+    @Pattern(regexp = "^(?:\\d{8}|[A-Za-z0-9]{9,12})$", message = "El DNI debe tener 8 dígitos o el CE entre 9 y 12 caracteres alfanuméricos")
+    private String numeroDocumento;
 
     @NotBlank
     @Email
@@ -26,6 +31,7 @@ public class ClienteRegistrationRequest {
     private String password;
 
     @NotBlank
+    @Pattern(regexp = "^\\+[1-9]\\d{7,14}$", message = "El teléfono debe incluir código de país y número, por ejemplo +51987654321")
     private String telefono;
 
     @NotBlank
@@ -56,12 +62,20 @@ public class ClienteRegistrationRequest {
         this.apellido = apellido;
     }
 
-    public String getDni() {
-        return dni;
+    public String getTipoDocumento() {
+        return tipoDocumento;
     }
 
-    public void setDni(String dni) {
-        this.dni = dni;
+    public void setTipoDocumento(String tipoDocumento) {
+        this.tipoDocumento = tipoDocumento;
+    }
+
+    public String getNumeroDocumento() {
+        return numeroDocumento;
+    }
+
+    public void setNumeroDocumento(String numeroDocumento) {
+        this.numeroDocumento = numeroDocumento;
     }
 
     public String getEmail() {

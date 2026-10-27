@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Input } from '../../components/ui/input';
 import { API_URL } from '../../context/AuthContext';
+import { ConfirmDeleteDialog } from '../../components/ui/ConfirmDeleteDialog';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
 
 interface Oferta {
   idOferta: number;
@@ -41,6 +43,8 @@ export const Ofertas = () => {
   const [guardando, setGuardando] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [ofertaEditando, setOfertaEditando] = useState<Oferta | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const ofertasFiltradas = ofertas.filter((oferta) => matchesAdminSearch(oferta, busqueda));
 
   // React Hook Form con estrategia profesional onBlur + onChange
   const {
@@ -199,12 +203,13 @@ export const Ofertas = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="mb-2 text-foreground font-bold text-2xl">Ofertas</h2>
           <p className="text-muted-foreground text-sm">Administra promociones y descuentos para el catálogo</p>
         </div>
-        <Button variant="accent" onClick={() => abrirModal()} className="gap-2">
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar oferta por título, descuento o fecha..." className="sm:mx-6" />
+        <Button variant="accent" onClick={() => abrirModal()} className="gap-2 shrink-0">
           <Plus size={18} />
           Nueva Oferta
         </Button>
@@ -219,7 +224,7 @@ export const Ofertas = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ofertas.map((oferta) => {
+          {ofertasFiltradas.map((oferta) => {
             const estado = determinarEstado(oferta.fechaInicio, oferta.fechaFin);
 
             return (
@@ -271,14 +276,11 @@ export const Ofertas = () => {
                       <Edit2 size={14} />
                       Editar
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => eliminar(oferta.idOferta)}
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                    <ConfirmDeleteDialog itemName={`la oferta «${oferta.titulo}»`} onConfirm={() => eliminar(oferta.idOferta)}>
+                      <Button variant="destructive" size="sm" className="gap-2" aria-label={`Eliminar oferta ${oferta.titulo}`}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </ConfirmDeleteDialog>
                   </div>
                 </CardContent>
               </Card>
@@ -290,8 +292,8 @@ export const Ofertas = () => {
       {/* Modal Dialog con validaciones React Hook Form */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
             <Dialog.Title className="mb-6 text-card-foreground text-xl font-bold">
               {ofertaEditando ? 'Editar Oferta' : 'Nueva Oferta'}
             </Dialog.Title>

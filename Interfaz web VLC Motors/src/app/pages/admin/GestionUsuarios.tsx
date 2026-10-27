@@ -3,9 +3,11 @@ import { useForm } from 'react-hook-form';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { CountryCodeSelect } from '../../components/ui/CountryCodeSelect';
 import {
   Plus,
-  Trash2,
+  UserX,
+  UserCheck,
   User,
   Shield,
   Wrench,
@@ -17,6 +19,9 @@ import {
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { API_URL } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
+import { PAISES_CODIGO } from '../../utils/phoneCountries';
 
 // Catálogo vehicular
 const CATALOGO_MOTOTAXIS: Record<string, string[]> = {
@@ -81,11 +86,13 @@ const CATALOGO_MOTOTAXIS: Record<string, string[]> = {
 interface UsuarioFormData {
   nombre: string;
   apellido: string;
-  dni: string;
+  tipoDocumento: 'DNI' | 'CE';
+  numeroDocumento: string;
   email: string;
   contrasenia?: string;
   rol: number;
   telefono?: string;
+  codigoPais?: string;
   direccion?: string;
   placaMototaxi?: string;
   marcaMototaxi?: string;
@@ -95,6 +102,7 @@ interface UsuarioFormData {
 }
 
 export const GestionUsuarios = () => {
+  const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -103,6 +111,7 @@ export const GestionUsuarios = () => {
 
   // Filtro de rol en tabla: 1=Admin, 2=Trabajador, 3=Cliente, 'todos'=Sin filtro
   const [filtroActivo, setFiltroActivo] = useState<number | 'todos'>('todos');
+  const [busqueda, setBusqueda] = useState('');
 
   // Configuración de validación profesional
   const {
@@ -150,18 +159,29 @@ export const GestionUsuarios = () => {
     }
   };
 
-  const eliminarUsuario = async (id: number) => {
+  const cambiarEstadoUsuario = async (usuario: any) => {
+    const esMiCuenta = String(usuario.idUsuario) === String(user?.idUsuario ?? user?.id);
+    if (esMiCuenta && usuario.activo) {
+      toast.error('No puedes desactivar tu propia cuenta');
+      return;
+    }
+    const activo = !usuario.activo;
     try {
-      const res = await fetch(`${API_URL}/api/usuarios/${id}`, {
-        method: 'DELETE',
+      const res = await fetch(`${API_URL}/api/usuarios/${usuario.idUsuario}/estado`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({ activo }),
       });
       if (res.status === 401) return (window.location.href = '/iniciar-sesion');
-      if (!res.ok) throw new Error('Error');
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.error || 'No se pudo cambiar el estado de la cuenta');
+      }
       await cargarUsuarios();
-      toast.success('Usuario eliminado exitosamente');
-    } catch {
-      toast.error('No se pudo eliminar el usuario. Verifique dependencias activas.');
+      toast.success(activo ? 'Cuenta activada' : 'Cuenta desactivada');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo cambiar el estado de la cuenta');
     }
   };
 
@@ -178,15 +198,27 @@ export const GestionUsuarios = () => {
     ]);
     setUsuarioEditando(usuario ?? null);
 
+    const telefonoGuardado = String(usuario?.telefono ?? '');
+    const codigoGuardado = telefonoGuardado.startsWith('+')
+      ? [...PAISES_CODIGO]
+          .sort((a, b) => b[2].length - a[2].length)
+          .find(([, , codigo]) => telefonoGuardado.startsWith(codigo))?.[2] ?? '+51'
+      : '+51';
+    const numeroTelefono = telefonoGuardado.startsWith(codigoGuardado)
+      ? telefonoGuardado.slice(codigoGuardado.length).replace(/\D/g, '')
+      : telefonoGuardado.replace(/\D/g, '');
+
     // Precarga o limpia el formulario con react-hook-form
     reset({
       nombre: usuario?.nombre ?? '',
       apellido: usuario?.apellido ?? '',
-      dni: usuario?.dni ?? '',
+      tipoDocumento: usuario?.tipoDocumento ?? 'DNI',
+      numeroDocumento: usuario?.numeroDocumento ?? usuario?.dni ?? '',
       email: usuario?.email ?? '',
       contrasenia: '',
       rol: usuario?.rol ?? 3,
-      telefono: usuario?.telefono ?? '',
+      telefono: numeroTelefono,
+      codigoPais: codigoGuardado,
       direccion: usuario?.direccion ?? '',
       placaMototaxi: usuario?.placaMototaxi ?? '',
       marcaMototaxi: usuario?.marcaMototaxi ?? '',
@@ -210,10 +242,11 @@ export const GestionUsuarios = () => {
         ? {
             nombre: data.nombre.trim(),
             apellido: data.apellido.trim(),
-            dni: data.dni.trim(),
+            tipoDocumento: data.tipoDocumento,
+            numeroDocumento: data.numeroDocumento.trim().toUpperCase(),
             email: data.email.trim().toLowerCase(),
             ...(data.rol === 3 && {
-              telefono: data.telefono?.trim(),
+              telefono: `${data.codigoPais ?? '+51'}${data.telefono?.replace(/\D/g, '') ?? ''}`,
               direccion: data.direccion?.trim(),
               placaMototaxi: data.placaMototaxi?.trim().toUpperCase(),
               marcaMototaxi: data.marcaMototaxi,
@@ -228,7 +261,8 @@ export const GestionUsuarios = () => {
             ...data,
             nombre: data.nombre.trim(),
             apellido: data.apellido.trim(),
-            dni: data.dni.trim(),
+            tipoDocumento: data.tipoDocumento,
+            numeroDocumento: data.numeroDocumento.trim().toUpperCase(),
             email: data.email.trim().toLowerCase(),
             placaMototaxi: data.placaMototaxi?.trim().toUpperCase(),
           };
@@ -284,8 +318,8 @@ export const GestionUsuarios = () => {
   };
 
   const usuariosFiltrados = usuarios.filter((usuario) => {
-    if (filtroActivo === 'todos') return true;
-    return usuario.rol === filtroActivo;
+    const coincideRol = filtroActivo === 'todos' || usuario.rol === filtroActivo;
+    return coincideRol && matchesAdminSearch(usuario, busqueda);
   });
 
   return (
@@ -298,6 +332,8 @@ export const GestionUsuarios = () => {
             Control de accesos y perfiles de clientes, mecánicos y administradores
           </p>
         </div>
+
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar usuario por nombre, correo o documento..." className="xl:mx-6" />
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-card border border-border p-1 rounded-lg">
@@ -392,6 +428,9 @@ export const GestionUsuarios = () => {
                   </div>
 
                   <div className="space-y-1 mb-4">
+                    <p className="text-xs text-muted-foreground">
+                      {usuario.tipoDocumento === 'CE' ? 'Carnet de extranjería' : 'DNI'}: {usuario.numeroDocumento || usuario.dni || 'Sin registrar'}
+                    </p>
                     {usuario.rol === 3 && (
                       <>
                         <p className="text-xs text-muted-foreground">
@@ -427,6 +466,9 @@ export const GestionUsuarios = () => {
                     >
                       {ui.text}
                     </span>
+                    <span className={`ml-2 inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${usuario.activo ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-400'}`}>
+                      {usuario.activo ? 'Activa' : 'Desactivada'}
+                    </span>
                   </div>
 
                   <div className="flex justify-end mt-4">
@@ -441,11 +483,14 @@ export const GestionUsuarios = () => {
                       <Edit2 size={14} />
                     </Button>
                     <Button
-                      variant="destructive"
+                      variant={usuario.activo ? 'destructive' : 'outline'}
                       size="sm"
-                      onClick={() => eliminarUsuario(usuario.idUsuario)}
+                      title={usuario.activo ? 'Desactivar cuenta' : 'Activar cuenta'}
+                      aria-label={`${usuario.activo ? 'Desactivar' : 'Activar'} cuenta de ${usuario.nombre} ${usuario.apellido}`}
+                      disabled={String(usuario.idUsuario) === String(user?.idUsuario ?? user?.id) && usuario.activo}
+                      onClick={() => cambiarEstadoUsuario(usuario)}
                     >
-                      <Trash2 size={14} />
+                      {usuario.activo ? <UserX size={14} /> : <UserCheck size={14} />}
                     </Button>
                   </div>
                 </CardContent>
@@ -458,8 +503,8 @@ export const GestionUsuarios = () => {
       {/* Modal con validación profesional onBlur / onChange */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
             <Dialog.Title className="mb-6 text-card-foreground text-xl font-bold">
               {usuarioEditando ? 'Editar Usuario' : 'Nuevo Usuario'}
             </Dialog.Title>
@@ -510,21 +555,28 @@ export const GestionUsuarios = () => {
                 />
               </div>
 
-              {/* DNI */}
-              <Input
-                label="DNI *"
-                placeholder="12345678"
-                inputMode="numeric"
-                maxLength={8}
-                error={errors.dni?.message}
-                {...register('dni', {
-                  required: 'El DNI es obligatorio',
-                  pattern: {
-                    value: /^\d{8}$/,
-                    message: 'Debe tener exactamente 8 dígitos numéricos',
-                  },
-                })}
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="tipoDocumento" className="text-sm font-medium text-foreground">Documento de identidad *</label>
+                  <select id="tipoDocumento" className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-foreground text-sm" {...register('tipoDocumento', { required: 'Selecciona un documento' })}>
+                    <option value="DNI">DNI</option>
+                    <option value="CE">Carnet de extranjería</option>
+                  </select>
+                </div>
+                <Input
+                  label={`${watch('tipoDocumento', 'DNI') === 'CE' ? 'Carnet de extranjería' : 'DNI'} *`}
+                  placeholder={watch('tipoDocumento', 'DNI') === 'CE' ? '123456789' : '12345678'}
+                  inputMode={watch('tipoDocumento', 'DNI') === 'CE' ? 'text' : 'numeric'}
+                  maxLength={watch('tipoDocumento', 'DNI') === 'CE' ? 12 : 8}
+                  error={errors.numeroDocumento?.message}
+                  {...register('numeroDocumento', {
+                    required: 'El número de documento es obligatorio',
+                    pattern: watch('tipoDocumento', 'DNI') === 'CE'
+                      ? { value: /^[A-Za-z0-9]{9,12}$/, message: 'El CE debe tener entre 9 y 12 caracteres alfanuméricos' }
+                      : { value: /^\d{8}$/, message: 'El DNI debe tener exactamente 8 dígitos numéricos' },
+                  })}
+                />
+              </div>
 
               {/* Email */}
               <Input
@@ -584,20 +636,31 @@ export const GestionUsuarios = () => {
                     Datos del Cliente y Unidad
                   </h4>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Teléfono"
-                      placeholder="987654321"
-                      inputMode="tel"
-                      maxLength={12}
-                      error={errors.telefono?.message}
-                      {...register('telefono', {
-                        pattern: {
-                          value: /^(?:\+51|51)?\s?9\d{8}$/,
-                          message: 'Celular inválido (ej. 987654321)',
-                        },
-                      })}
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                      <label htmlFor="telefono" className="text-sm font-medium text-foreground">Teléfono</label>
+                      <div className="flex h-11 overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
+                        <CountryCodeSelect
+                          value={watch('codigoPais', '+51')}
+                          className="w-[76px] max-w-[30%]"
+                          registration={register('codigoPais', { required: 'Selecciona el código de país' })}
+                        />
+                        <input
+                          id="telefono"
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={12}
+                          placeholder="Número telefónico"
+                          className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                          {...register('telefono', {
+                            setValueAs: (value: string) => value.replace(/\D/g, ''),
+                            pattern: { value: /^\d{6,12}$/, message: 'Ingresa entre 6 y 12 dígitos' },
+                            validate: (value) => watch('codigoPais', '+51') !== '+51' || !value || /^9\d{8}$/.test(value) || 'Para Perú, ingresa un celular de 9 dígitos que empiece con 9',
+                          })}
+                        />
+                      </div>
+                      {errors.telefono && <p className="text-xs text-destructive">{errors.telefono.message}</p>}
+                    </div>
                     <Input
                       label="Placa *"
                       placeholder="1234-5A"

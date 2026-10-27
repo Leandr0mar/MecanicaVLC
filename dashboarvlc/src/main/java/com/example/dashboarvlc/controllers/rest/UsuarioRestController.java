@@ -43,10 +43,22 @@ public class UsuarioRestController {
         return ResponseEntity.ok(usuarios);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        usuarioService.eliminar(id);
-        return ResponseEntity.noContent().build();
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<?> cambiarEstado(@PathVariable Long id,
+                                           @RequestBody Map<String, Boolean> request,
+                                           org.springframework.security.core.Authentication authentication) {
+        Boolean activo = request.get("activo");
+        if (activo == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Debes indicar el estado activo"));
+        }
+        Optional<Usuario> usuario = usuarioService.buscarPorId(id);
+        if (usuario.isEmpty()) return ResponseEntity.notFound().build();
+        if (!activo && authentication != null && authentication.getName().equalsIgnoreCase(usuario.get().getEmail())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "No puedes desactivar tu propia cuenta"));
+        }
+        usuario.get().setActivo(activo);
+        return ResponseEntity.ok(usuarioService.guardar(usuario.get()));
     }
 
     @PutMapping("/{id}")
@@ -64,11 +76,11 @@ public class UsuarioRestController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El correo ya está registrado"));
         }
 
-        boolean dniEnUso = usuarioService.buscarPorDni(request.getDni())
+        boolean dniEnUso = usuarioService.buscarPorNumeroDocumento(request.getNumeroDocumento())
                 .filter(usuario -> !usuario.getIdUsuario().equals(id))
                 .isPresent();
         if (dniEnUso) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El DNI ya está registrado"));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El documento ya está registrado"));
         }
 
         Usuario actualizado = crearModeloActualizacion(usuarioActual.get(), request);
@@ -115,7 +127,9 @@ public class UsuarioRestController {
 
         actualizado.setNombre(request.getNombre());
         actualizado.setApellido(request.getApellido());
-        actualizado.setDni(request.getDni());
+        actualizado.setTipoDocumento(request.getTipoDocumento());
+        actualizado.setNumeroDocumento(request.getNumeroDocumento());
+        actualizado.setDni("DNI".equals(request.getTipoDocumento()) ? request.getNumeroDocumento() : null);
         actualizado.setEmail(request.getEmail());
         actualizado.setRol(actual.getRol());
         actualizado.setContrasenia(actual.getContrasenia());
@@ -126,8 +140,9 @@ public class UsuarioRestController {
 
     @PostMapping("/cliente")
     public ResponseEntity<?> crearCliente(@Valid @RequestBody Cliente cliente) {
-        if (usuarioService.buscarPorDni(cliente.getDni()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El DNI ya está registrado"));
+        normalizarDocumento(cliente);
+        if (usuarioService.buscarPorNumeroDocumento(cliente.getNumeroDocumento()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El documento ya está registrado"));
         }
         cliente.setContrasenia(passwordEncoder.encode(cliente.getContrasenia())); // ¡Encriptar!
         cliente.setRol(3);
@@ -136,8 +151,9 @@ public class UsuarioRestController {
 
     @PostMapping("/trabajador")
     public ResponseEntity<?> crearTrabajador(@Valid @RequestBody Trabajador trabajador) {
-        if (usuarioService.buscarPorDni(trabajador.getDni()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El DNI ya está registrado"));
+        normalizarDocumento(trabajador);
+        if (usuarioService.buscarPorNumeroDocumento(trabajador.getNumeroDocumento()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El documento ya está registrado"));
         }
         trabajador.setContrasenia(passwordEncoder.encode(trabajador.getContrasenia()));
         trabajador.setRol(2);
@@ -146,11 +162,22 @@ public class UsuarioRestController {
 
     @PostMapping("/admin")
     public ResponseEntity<?> crearAdmin(@Valid @RequestBody Administrador admin) {
-        if (usuarioService.buscarPorDni(admin.getDni()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El DNI ya está registrado"));
+        normalizarDocumento(admin);
+        if (usuarioService.buscarPorNumeroDocumento(admin.getNumeroDocumento()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El documento ya está registrado"));
         }
         admin.setContrasenia(passwordEncoder.encode(admin.getContrasenia()));
         admin.setRol(1);
         return new ResponseEntity<>(administradorService.guardar(admin), HttpStatus.CREATED);
+    }
+
+    private void normalizarDocumento(Usuario usuario) {
+        if (usuario.getTipoDocumento() == null || usuario.getTipoDocumento().isBlank()) {
+            usuario.setTipoDocumento("DNI");
+        }
+        if (usuario.getNumeroDocumento() == null || usuario.getNumeroDocumento().isBlank()) {
+            usuario.setNumeroDocumento(usuario.getDni());
+        }
+        usuario.setDni("DNI".equals(usuario.getTipoDocumento()) ? usuario.getNumeroDocumento() : null);
     }
 }

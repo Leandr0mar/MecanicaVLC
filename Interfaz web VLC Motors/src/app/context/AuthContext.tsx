@@ -2,9 +2,12 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 
 interface User {
   id: string;
+  idUsuario?: string;
   nombre: string;
   apellido?: string;
   dni?: string;
+  tipoDocumento?: 'DNI' | 'CE';
+  numeroDocumento?: string;
   email: string;
   rol: 'cliente' | 'trabajador' | 'admin';
   telefono?: string;
@@ -14,14 +17,15 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<User | null>;
   register: (data: RegisterData) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: () => Promise<boolean>;
   isAuthenticated: boolean;
 }
 
 interface RegisterData {
   nombre: string;
   apellido: string;
-  dni: string;
+  tipoDocumento: 'DNI' | 'CE';
+  numeroDocumento: string;
   email: string;
   password: string;
   telefono: string;
@@ -95,16 +99,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (!response.ok) {
-        return null;
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Credenciales incorrectas');
       }
 
       const userData = await response.json();
+      userData.idUsuario = userData.idUsuario ?? userData.id;
+      userData.id = userData.id ?? userData.idUsuario;
       setUser(userData);
       localStorage.setItem('vlc_user', JSON.stringify(userData));
       return userData;
     } catch (error) {
       console.error('Login error:', error);
-      return null;
+      throw error instanceof Error ? error : new Error('No se pudo conectar con el servidor');
     }
   };
 
@@ -119,25 +126,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         body: JSON.stringify(data),
       });
 
-      return response.ok;
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || `No se pudo completar el registro (HTTP ${response.status})`);
+      }
+      return true;
     } catch (error) {
       console.error('Register error:', error);
-      return false;
+      throw error instanceof Error ? error : new Error('No se pudo conectar con el servidor');
     }
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<boolean> => {
+    let confirmadoPorServidor = false;
     try {
-      await fetch(`${API_URL}/api/auth/logout`, {
+      const response = await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
+      confirmadoPorServidor = response.ok;
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
       localStorage.removeItem('vlc_user');
     }
+    return confirmadoPorServidor;
   };
 
   return (

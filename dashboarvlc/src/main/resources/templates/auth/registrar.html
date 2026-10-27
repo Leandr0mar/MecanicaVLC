@@ -31,14 +31,85 @@
         </div>
 
         <div class="form-group">
-            <label>DNI:</label>
-            <input type="text" th:field="*{dni}" maxlength="8" inputmode="numeric" />
-            <p class="error-message" th:if="${#fields.hasErrors('dni')}" th:errors="*{dni}"></p>
+            <label>Tipo de documento:</label>
+            <select th:field="*{tipoDocumento}">
+                <option value="DNI">DNI</option>
+                <option value="CE">Carnet de extranjería</option>
+            </select>
+            <label>Número de documento:</label>
+            <input type="text" th:field="*{numeroDocumento}" maxlength="12" />
+            <p class="error-message" th:if="${#fields.hasErrors('numeroDocumento')}" th:errors="*{numeroDocumento}"></p>
         </div>
 
         <div class="form-group">
             <label>Celular / Teléfono:</label>
-            <input type="text" th:field="*{telefono}" />
+            <select name="codigoPais">
+                <option value="+51" selected>🇵🇪 Perú (+51)</option>
+                <option value="+1">🇺🇸 Estados Unidos / Canadá (+1)</option>
+                <option value="+52">🇲🇽 México (+52)</option>
+                <option value="+54">🇦🇷 Argentina (+54)</option>
+                <option value="+55">🇧🇷 Brasil (+55)</option>
+                <option value="+56">🇨🇱 Chile (+56)</option>
+                <option value="+57">🇨🇴 Colombia (+57)</option>
+                <option value="+58">🇻🇪 Venezuela (+58)</option>
+                <option value="+591">🇧🇴 Bolivia (+591)</option>
+                <option value="+593">🇪🇨 Ecuador (+593)</option>
+                <option value="+44">🇬🇧 Reino Unido (+44)</option>
+                <option value="+33">🇫🇷 Francia (+33)</option>
+                <option value="+49">🇩🇪 Alemania (+49)</option>
+                <option value="+39">🇮🇹 Italia (+39)</option>
+                <option value="+81">🇯🇵 Japón (+81)</option>
+                <option value="+82">🇰🇷 Corea del Sur (+82)</option>
+                <option value="+86">🇨🇳 China (+86)</option>
+                <option value="+91">🇮🇳 India (+91)</option>
+                <option value="+61">🇦🇺 Australia (+61)</option>
+                <option value="+27">🇿🇦 Sudáfrica (+27)</option>
+                <option value="+31">🇳🇱 Países Bajos (+31)</option>
+                <option value="+32">🇧🇪 Bélgica (+32)</option>
+                <option value="+41">🇨🇭 Suiza (+41)</option>
+                <option value="+43">🇦🇹 Austria (+43)</option>
+                <option value="+45">🇩🇰 Dinamarca (+45)</option>
+                <option value="+46">🇸🇪 Suecia (+46)</option>
+                <option value="+47">🇳🇴 Noruega (+47)</option>
+                <option value="+48">🇵🇱 Polonia (+48)</option>
+                <option value="+351">🇵🇹 Portugal (+351)</option>
+                <option value="+353">🇮🇪 Irlanda (+353)</option>
+                <option value="+358">🇫🇮 Finlandia (+358)</option>
+                <option value="+30">🇬🇷 Grecia (+30)</option>
+                <option value="+40">🇷🇴 Rumanía (+40)</option>
+                <option value="+420">🇨🇿 Chequia (+420)</option>
+                <option value="+380">🇺🇦 Ucrania (+380)</option>
+                <option value="+7">🇷🇺 Rusia / Kazajistán (+7)</option>
+                <option value="+66">🇹🇭 Tailandia (+66)</option>
+                <option value="+84">🇻🇳 Vietnam (+84)</option>
+                <option value="+62">🇮🇩 Indonesia (+62)</option>
+                <option value="+63">🇵🇭 Filipinas (+63)</option>
+                <option value="+60">🇲🇾 Malasia (+60)</option>
+                <option value="+65">🇸🇬 Singapur (+65)</option>
+                <option value="+886">🇹🇼 Taiwán (+886)</option>
+                <option value="+852">🇭🇰 Hong Kong (+852)</option>
+                <option value="+966">🇸🇦 Arabia Saudita (+966)</option>
+                <option value="+971">🇦🇪 Emiratos Árabes Unidos (+971)</option>
+                <option value="+972">🇮🇱 Israel (+972)</option>
+                <option value="+974">🇶🇦 Qatar (+974)</option>
+                <option value="+92">🇵🇰 Pakistán (+92)</option>
+                <option value="+880">🇧🇩 Bangladés (+880)</option>
+                <option value="+94">🇱🇰 Sri Lanka (+94)</option>
+                <option value="+977">🇳🇵 Nepal (+977)</option>
+                <option value="+20">🇪🇬 Egipto (+20)</option>
+                <option value="+212">🇲🇦 Marruecos (+212)</option>
+                <option value="+213">🇩🇿 Argelia (+213)</option>
+                <option value="+216">🇹🇳 Túnez (+216)</option>
+                <option value="+234">🇳🇬 Nigeria (+234)</option>
+                <option value="+254">🇰🇪 Kenia (+254)</option>
+                <option value="+251">🇪🇹 Etiopía (+251)</option>
+                <option value="+233">🇬🇭 Ghana (+233)</option>
+                <option value="+255">🇹🇿 Tanzania (+255)</option>
+                <option value="+256">🇺🇬 Uganda (+256)</option>
+                <option value="+64">🇳🇿 Nueva Zelanda (+64)</option>
+                <option value="+679">🇫🇯 Fiyi (+679)</option>
+            </select>
+            <input type="tel" th:field="*{telefono}" placeholder="987654321" />
             <p class="error-message" th:if="${#fields.hasErrors('telefono')}" th:errors="*{telefono}"></p>
         </div>
 

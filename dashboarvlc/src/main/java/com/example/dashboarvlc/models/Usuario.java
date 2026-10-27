@@ -28,10 +28,27 @@ public abstract class Usuario {
     @Column(unique = true)
     private String email;
 
-    @NotBlank(message = "El DNI no puede estar vacío")
-    @Pattern(regexp = "^\\d{8}$", message = "El DNI debe tener exactamente 8 dígitos numéricos")
-    @Column(unique = true)
+    @Column(unique = true, nullable = true, length = 20)
     private String dni;
+
+    @NotBlank(message = "El tipo de documento no puede estar vacío")
+    @Pattern(regexp = "^(DNI|CE)$", message = "El tipo de documento debe ser DNI o CE")
+    @Column(name = "tipo_documento", nullable = false, length = 3)
+    private String tipoDocumento = "DNI";
+
+    @NotBlank(message = "El número de documento no puede estar vacío")
+    @Size(max = 20, message = "El número de documento no puede superar 20 caracteres")
+    @Column(name = "numero_documento", unique = true, length = 20)
+    private String numeroDocumento;
+
+    @Column(nullable = false)
+    private Boolean activo = true;
+
+    private void sincronizarDocumentoLegado() {
+        if (tipoDocumento == null || tipoDocumento.isBlank()) tipoDocumento = "DNI";
+        if (numeroDocumento == null || numeroDocumento.isBlank()) numeroDocumento = dni;
+        dni = "DNI".equals(tipoDocumento) ? numeroDocumento : null;
+    }
 
     @NotBlank(message = "La contraseña no puede estar vacía")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // <-- Se recibe, pero NO se expone al frontend
@@ -45,6 +62,12 @@ public abstract class Usuario {
 
     @PrePersist
     protected void onCreate() {
+        sincronizarDocumentoLegado();
         this.fechaRegistro = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        sincronizarDocumentoLegado();
     }
 }

@@ -48,7 +48,12 @@ export const Reportes = () => {
         fetch(`${API_URL}/api/reseñas`, { credentials: 'include' })
       ]);
 
-      if (resOrdenes.status === 401) return (window.location.href = '/iniciar-sesion');
+      if ([resOrdenes, resCitas, resResenas].some((response) => response.status === 401)) {
+        return (window.location.href = '/iniciar-sesion');
+      }
+      if (![resOrdenes, resCitas, resResenas].every((response) => response.ok)) {
+        throw new Error('No se pudieron cargar los datos de los reportes');
+      }
 
       const ordenes = await resOrdenes.json();
       const citas = await resCitas.json();
@@ -59,19 +64,23 @@ export const Reportes = () => {
       const añoActual = hoy.getFullYear();
 
       // --- 1. CÁLCULO DE MÉTRICAS GLOBALES ---
-      const ordenesPagadas = ordenes.filter((o: any) => o.estadoRecojo === 'RECOGIDO');
+      const ordenesPagadas = ordenes.filter((o: any) => o.estadoRecojo === 'RECOGIDO' && o.fechaPago);
       const citasCompletadas = citas.filter((c: any) => c.estado === 'COMPLETADA');
+      const citasPagadas = citas.filter((c: any) => c.pagoRegistrado && c.fechaPago && Number.isFinite(Number(c.montoPagado)));
       
       const ingresosOrdenes = ordenesPagadas.reduce((sum: number, o: any) => sum + o.montoTotal, 0);
-      const ingresosCitas = citasCompletadas.reduce((sum: number, c: any) => sum + (c.montoInicial || 0), 0);
+      const ingresosCitas = citasPagadas.reduce((sum: number, c: any) => sum + Number(c.montoPagado), 0);
       
       const citasEsteMes = citas.filter((c: any) => {
         const fechaCita = new Date(c.fecha + 'T00:00:00');
         return fechaCita.getMonth() === mesActual && fechaCita.getFullYear() === añoActual;
       });
 
-      const promSat = resenas.length > 0 
-        ? (resenas.reduce((sum: number, r: any) => sum + r.calificacion, 0) / resenas.length).toFixed(1) 
+      const calificaciones = resenas
+        .map((resena: any) => Number(resena.calificacion))
+        .filter((calificacion: number) => Number.isFinite(calificacion) && calificacion >= 1 && calificacion <= 5);
+      const promSat = calificaciones.length > 0
+        ? (calificaciones.reduce((sum: number, calificacion: number) => sum + calificacion, 0) / calificaciones.length).toFixed(1)
         : '0.0';
 
       setMetricas({
@@ -79,7 +88,7 @@ export const Reportes = () => {
         totalCitasMes: citasEsteMes.length,
         serviciosCompletados: citasCompletadas.length,
         promedioSatisfaccion: promSat,
-        totalResenas: resenas.length
+        totalResenas: calificaciones.length
       });
 
       // --- 2. GRÁFICO: VENTAS MENSUALES (Últimos 6 meses) ---
@@ -97,10 +106,10 @@ export const Reportes = () => {
       });
 
       // Sumar Citas (Servicios) a los meses
-      citasCompletadas.forEach((c: any) => {
-        const fecha = new Date(c.fecha + 'T00:00:00');
+      citasPagadas.forEach((c: any) => {
+        const fecha = new Date(c.fechaPago);
         const mesIndex = ultimos6Meses.findIndex(m => m.mesNum === fecha.getMonth() && m.año === fecha.getFullYear());
-        if (mesIndex !== -1) ultimos6Meses[mesIndex].ingresos += (c.montoInicial || 0);
+        if (mesIndex !== -1) ultimos6Meses[mesIndex].ingresos += Number(c.montoPagado);
       });
 
       setVentasMensuales(ultimos6Meses);
@@ -234,7 +243,7 @@ export const Reportes = () => {
                 </div>
               </div>
               <div className="mt-3 text-xs text-muted-foreground">
-                Basado en {metricas.totalResenas} reseñas de clientes
+                Promedio general de {metricas.totalResenas} calificaciones registradas
               </div>
             </CardContent>
           </Card>

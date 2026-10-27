@@ -7,6 +7,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
 import * as XLSX from 'xlsx';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
 
 interface ItemPedido {
   idItemComprado: number;
@@ -29,6 +30,7 @@ export const GestionPedidos = () => {
   const [loading, setLoading] = useState(true);
   
   const [filtroEstado, setFiltroEstado] = useState<string | 'TODOS'>('TODOS');
+  const [busqueda, setBusqueda] = useState('');
   
   // Estados para el Modal
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -48,8 +50,10 @@ export const GestionPedidos = () => {
       if (!res.ok) throw new Error('Error al cargar pedidos');
       
       const data = await res.json();
-      // Ordenamos para ver los más recientes primero
-      const ordenadas = data.sort((a: Pedido, b: Pedido) => b.idReserva - a.idReserva);
+      const prioridad = (estado: string) => ({ PENDIENTE: 0, RECOGIDO: 1, CANCELADO: 2 }[estado?.toUpperCase()] ?? 3);
+      const ordenadas = data.sort((a: Pedido, b: Pedido) =>
+        prioridad(a.estadoRecojo) - prioridad(b.estadoRecojo) || b.idReserva - a.idReserva
+      );
       setPedidos(ordenadas);
     } catch (error) {
       toast.error('Error al cargar la información de los pedidos');
@@ -101,7 +105,9 @@ export const GestionPedidos = () => {
     }
   };
 
-  const pedidosFiltrados = pedidos.filter(pedido => filtroEstado === 'TODOS' || pedido.estadoRecojo === filtroEstado);
+  const pedidosFiltrados = pedidos.filter(pedido =>
+    (filtroEstado === 'TODOS' || pedido.estadoRecojo === filtroEstado) && matchesAdminSearch(pedido, busqueda)
+  );
 
   // --- LÓGICA: EXPORTAR A EXCEL ---
   const exportarExcel = () => {
@@ -151,6 +157,8 @@ export const GestionPedidos = () => {
           <p className="text-muted-foreground">Administra las compras de repuestos y coordina las entregas</p>
         </div>
         
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar por cliente, producto, orden o fecha..." className="xl:mx-6" />
+
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <Button variant="secondary" onClick={exportarExcel} className="gap-2 bg-green-600/10 text-green-600 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 border border-green-600/20 h-10">
             <Download size={16} />
@@ -236,8 +244,8 @@ export const GestionPedidos = () => {
       {/* MODAL PARA DETALLES Y CAMBIO DE ESTADO */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-lg shadow-2xl">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-lg shadow-2xl">
             <Dialog.Title className="mb-2 text-card-foreground text-lg font-bold flex items-center gap-2">
               <Package className="text-accent" size={20}/>
               Gestión de Pedido #{pedidoEditando?.idReserva}

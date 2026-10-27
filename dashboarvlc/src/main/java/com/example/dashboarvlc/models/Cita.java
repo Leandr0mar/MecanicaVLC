@@ -6,6 +6,7 @@ import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import com.example.dashboarvlc.models.enums.EstadoCita;
+import com.example.dashboarvlc.models.enums.MetodoPago;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -33,6 +34,17 @@ public class Cita {
     @PositiveOrZero
     @Column(name = "monto_inicial")
     private Double montoInicial;
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private Boolean pagoRegistrado = false;
+
+    @PositiveOrZero
+    private Double montoPagado;
+
+    @Enumerated(EnumType.STRING)
+    private MetodoPago metodoPago;
+
+    private LocalDateTime fechaPago;
 
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaModificacion;

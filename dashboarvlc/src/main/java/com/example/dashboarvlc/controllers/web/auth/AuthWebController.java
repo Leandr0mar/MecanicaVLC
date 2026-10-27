@@ -10,6 +10,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.example.dashboarvlc.models.Cliente;
 import com.example.dashboarvlc.services.ClienteService;
@@ -45,8 +46,13 @@ public class AuthWebController {
     @PostMapping("/registrar")
     public String procesarRegistro(@Valid @ModelAttribute("cliente") Cliente cliente, 
                                    BindingResult result, 
-                                   Model model) {
+                                   Model model,
+                                   @RequestParam(defaultValue = "+51") String codigoPais) {
         logger.info("[REGISTRO] Entrada a procesarRegistro con email={}", cliente.getEmail());
+
+        if (cliente.getTelefono() != null && !cliente.getTelefono().startsWith("+")) {
+            cliente.setTelefono(codigoPais + cliente.getTelefono().replaceAll("\\D", ""));
+        }
 
         // 1. Si hay errores de validación (campos vacíos, formato email incorrecto), regresa al formulario
         if (result.hasErrors()) {
@@ -55,8 +61,11 @@ public class AuthWebController {
         }
 
         try {
-            if (usuarioService.buscarPorDni(cliente.getDni()).isPresent()) {
-                model.addAttribute("error", "El DNI ya se encuentra registrado.");
+            if (cliente.getTipoDocumento() == null || cliente.getTipoDocumento().isBlank()) cliente.setTipoDocumento("DNI");
+            if (cliente.getNumeroDocumento() == null || cliente.getNumeroDocumento().isBlank()) cliente.setNumeroDocumento(cliente.getDni());
+            cliente.setDni("DNI".equals(cliente.getTipoDocumento()) ? cliente.getNumeroDocumento() : null);
+            if (usuarioService.buscarPorNumeroDocumento(cliente.getNumeroDocumento()).isPresent()) {
+                model.addAttribute("error", "El documento ya se encuentra registrado.");
                 return "auth/registrar";
             }
 

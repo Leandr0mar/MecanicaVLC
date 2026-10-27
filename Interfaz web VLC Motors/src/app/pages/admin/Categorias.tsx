@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Input } from '../../components/ui/input';
 import { API_URL } from '../../context/AuthContext';
+import { ConfirmDeleteDialog } from '../../components/ui/ConfirmDeleteDialog';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
 
 interface Categoria {
   idCategoria: number;
@@ -25,6 +27,8 @@ export const Categorias = () => {
   const [guardando, setGuardando] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const categoriasFiltradas = categorias.filter((categoria) => matchesAdminSearch(categoria, busqueda));
 
   // React Hook Form con estrategia profesional onBlur + onChange
   const {
@@ -151,12 +155,13 @@ export const Categorias = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="mb-2 text-foreground font-bold text-2xl">Categorías</h2>
           <p className="text-muted-foreground text-sm">Organiza los repuestos e insumos por familias de productos</p>
         </div>
-        <Button variant="accent" onClick={() => abrirModal()} className="gap-2">
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar categoría por nombre o descripción..." className="sm:mx-6" />
+        <Button variant="accent" onClick={() => abrirModal()} className="gap-2 shrink-0">
           <Plus size={18} />
           Nueva Categoría
         </Button>
@@ -181,7 +186,7 @@ export const Categorias = () => {
               </tr>
             </thead>
             <tbody>
-              {categorias.map((categoria) => (
+              {categoriasFiltradas.map((categoria) => (
                 <tr
                   key={categoria.idCategoria}
                   className="border-t border-border hover:bg-muted/50 transition-colors"
@@ -207,14 +212,11 @@ export const Categorias = () => {
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button
-                        onClick={() => eliminar(categoria.idCategoria)}
-                        className="p-2 hover:bg-destructive/20 rounded-lg transition-colors text-destructive"
-                        title="Eliminar categoría"
-                        aria-label={`Eliminar ${categoria.nombreCategoria}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <ConfirmDeleteDialog itemName={`la categoría «${categoria.nombreCategoria}»`} onConfirm={() => eliminar(categoria.idCategoria)}>
+                        <button className="p-2 hover:bg-destructive/20 rounded-lg transition-colors text-destructive" title="Eliminar categoría" aria-label={`Eliminar ${categoria.nombreCategoria}`}>
+                          <Trash2 size={16} />
+                        </button>
+                      </ConfirmDeleteDialog>
                     </div>
                   </td>
                 </tr>
@@ -227,8 +229,8 @@ export const Categorias = () => {
       {/* Modal Dialog con validaciones integradas */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
             <Dialog.Title className="mb-6 text-card-foreground text-xl font-bold">
               {categoriaEditando ? 'Editar Categoría' : 'Nueva Categoría'}
             </Dialog.Title>

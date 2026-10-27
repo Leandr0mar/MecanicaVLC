@@ -40,24 +40,26 @@ export const ReservarCita = () => {
 
   // Se dispara automáticamente cada vez que el usuario cambia la fecha en el calendario
   useEffect(() => {
-    if (fecha) {
+    if (fecha && servicioSeleccionado) {
       cargarDisponibilidad(fecha);
       setHora(''); // Reiniciar la hora elegida al cambiar de día
     } else {
       setHorariosDisponibles([]);
+      setHora('');
     }
-  }, [fecha]);
+  }, [fecha, servicioSeleccionado]);
 
   const cargarDisponibilidad = async (fechaSeleccionada: string) => {
     try {
+      setHorariosDisponibles([]);
       setLoadingHorarios(true);
-      const res = await fetch(`${API_URL}/api/citas/disponibilidad?fecha=${fechaSeleccionada}`, {
+      if (!servicioSeleccionado) return;
+      const res = await fetch(`${API_URL}/api/citas/disponibilidad?fecha=${fechaSeleccionada}&idServicio=${servicioSeleccionado}`, {
         credentials: 'include'
       });
       if (res.status === 401) return window.location.href = '/iniciar-sesion';
-      if (res.ok) {
-        setHorariosDisponibles(await res.json());
-      }
+      if (!res.ok) throw new Error('No se pudo consultar la disponibilidad para este servicio');
+      setHorariosDisponibles(await res.json());
     } catch (error) {
       toast.error('Error al verificar la disponibilidad');
     } finally {
@@ -169,7 +171,7 @@ export const ReservarCita = () => {
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
                   className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  min={new Date().toISOString().split('T')[0]} // No permite elegir fechas del pasado
+                  min={(() => { const hoy = new Date(); return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`; })()}
                 />
               </div>
 
@@ -178,11 +180,12 @@ export const ReservarCita = () => {
                 <select
                   value={hora}
                   onChange={(e) => setHora(e.target.value)}
-                  disabled={!fecha || loadingHorarios || horariosDisponibles.length === 0}
+                  disabled={!servicioSeleccionado || !fecha || loadingHorarios || horariosDisponibles.length === 0}
                   className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 >
                   <option value="">
-                    {!fecha ? 'Primero selecciona una fecha' 
+                    {!servicioSeleccionado ? 'Primero selecciona un servicio'
+                      : !fecha ? 'Primero selecciona una fecha' 
                       : loadingHorarios ? 'Buscando disponibilidad...' 
                       : horariosDisponibles.length === 0 ? 'Sin disponibilidad para este día' 
                       : 'Seleccione una hora'}
@@ -192,6 +195,8 @@ export const ReservarCita = () => {
                   ))}
                 </select>
               </div>
+
+              <p className="text-xs text-muted-foreground">El precio mostrado es referencial. El pago se realiza presencialmente al finalizar el servicio.</p>
 
               {servicioSeleccionado && (
                 <div className="p-4 bg-muted rounded-lg border border-border">

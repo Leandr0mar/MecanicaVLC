@@ -36,6 +36,7 @@ public class ClienteServiceImpl implements ClienteService {
         return clienteRepository.findById(id).map(existente -> {
             existente.setNombre(c.getNombre()); existente.setApellido(c.getApellido());
             existente.setDni(c.getDni()); existente.setEmail(c.getEmail()); existente.setTelefono(c.getTelefono());
+            existente.setTipoDocumento(c.getTipoDocumento()); existente.setNumeroDocumento(c.getNumeroDocumento());
             existente.setDireccion(c.getDireccion()); existente.setPlacaMototaxi(c.getPlacaMototaxi());
             existente.setMarcaMototaxi(c.getMarcaMototaxi()); existente.setModeloMototaxi(c.getModeloMototaxi());
             return clienteRepository.save(existente);

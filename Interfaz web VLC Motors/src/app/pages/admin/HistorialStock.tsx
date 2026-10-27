@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { API_URL } from '../../context/AuthContext';
 // Importamos la librería de Excel
 import * as XLSX from 'xlsx';
+import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
 
 interface Historial {
   idHistorialStock: number;
@@ -23,6 +24,8 @@ interface Historial {
 export const HistorialStock = () => {
   const [movimientos, setMovimientos] = useState<Historial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const movimientosFiltrados = movimientos.filter((movimiento) => matchesAdminSearch(movimiento, busqueda));
 
   useEffect(() => {
     cargarHistorial();
@@ -46,12 +49,12 @@ export const HistorialStock = () => {
 
   // --- NUEVA LÓGICA: EXPORTAR A EXCEL ---
   const exportarExcel = () => {
-    if (movimientos.length === 0) {
+    if (movimientosFiltrados.length === 0) {
       return toast.error('No hay movimientos de stock para exportar');
     }
 
     // 1. Mapeamos los datos para crear cabeceras legibles en el Excel
-    const datosExcel = movimientos.map((m) => {
+    const datosExcel = movimientosFiltrados.map((m) => {
       return {
         'ID Transacción': m.idHistorialStock,
         'Producto': m.producto?.nombre || 'Producto no disponible',
@@ -102,12 +105,13 @@ export const HistorialStock = () => {
     <div className="space-y-6">
       
       {/* --- ENCABEZADO CON BOTÓN DE EXPORTAR --- */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h2 className="mb-2 text-foreground">Historial de Stock</h2>
           <p className="text-muted-foreground">Registro de movimientos de inventario en tiempo real</p>
         </div>
-        <Button variant="secondary" onClick={exportarExcel} className="gap-2 bg-green-600/10 text-green-600 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 border border-green-600/20">
+        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar por producto, movimiento o descripción..." className="xl:mx-6" />
+        <Button variant="secondary" onClick={exportarExcel} className="gap-2 bg-green-600/10 text-green-600 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 border border-green-600/20 shrink-0">
           <Download size={18} />
           Exportar Historial
         </Button>
@@ -158,11 +162,11 @@ export const HistorialStock = () => {
         <CardContent>
           {loading ? (
              <div className="text-center py-8 text-muted-foreground">Cargando movimientos...</div>
-          ) : movimientos.length === 0 ? (
+          ) : movimientosFiltrados.length === 0 ? (
              <div className="text-center py-8 text-muted-foreground">Aún no hay movimientos de stock registrados.</div>
           ) : (
             <div className="space-y-3">
-              {movimientos.map((movimiento) => {
+              {movimientosFiltrados.map((movimiento) => {
                 const esEntrada = movimiento.tipoMovimiento.toUpperCase().includes('ENTRADA');
                 
                 return (

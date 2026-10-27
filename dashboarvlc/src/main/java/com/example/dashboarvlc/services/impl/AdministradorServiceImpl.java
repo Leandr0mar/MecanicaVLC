@@ -22,7 +22,8 @@ public class AdministradorServiceImpl implements AdministradorService {
     @Override @Transactional public Administrador actualizar(Long id, Administrador a) {
         return administradorRepository.findById(id).map(existente -> {
             existente.setNombre(a.getNombre()); existente.setApellido(a.getApellido());
-            existente.setDni(a.getDni()); existente.setEmail(a.getEmail()); existente.setNivelAcceso(a.getNivelAcceso());
+            existente.setDni(a.getDni()); existente.setTipoDocumento(a.getTipoDocumento()); existente.setNumeroDocumento(a.getNumeroDocumento());
+            existente.setEmail(a.getEmail()); existente.setNivelAcceso(a.getNivelAcceso());
             return administradorRepository.save(existente);
         }).orElseThrow(() -> new RuntimeException("Administrador no encontrado"));
     }

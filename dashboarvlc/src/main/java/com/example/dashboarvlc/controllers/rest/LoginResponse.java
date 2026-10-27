@@ -7,6 +7,8 @@ public class LoginResponse {
     private String nombre;
     private String apellido;
     private String dni;
+    private String tipoDocumento;
+    private String numeroDocumento;
     private String email;
     private String rol;
 
@@ -42,6 +44,11 @@ public class LoginResponse {
         this.dni = dni;
     }
 
+    public String getTipoDocumento() { return tipoDocumento; }
+    public void setTipoDocumento(String tipoDocumento) { this.tipoDocumento = tipoDocumento; }
+    public String getNumeroDocumento() { return numeroDocumento; }
+    public void setNumeroDocumento(String numeroDocumento) { this.numeroDocumento = numeroDocumento; }
+
     public String getEmail() {
         return email;
     }
@@ -64,6 +71,8 @@ public class LoginResponse {
         response.setNombre(usuario.getNombre());
         response.setApellido(usuario.getApellido());
         response.setDni(usuario.getDni());
+        response.setTipoDocumento(usuario.getTipoDocumento());
+        response.setNumeroDocumento(usuario.getNumeroDocumento());
         response.setEmail(usuario.getEmail());
         response.setRol(mapRole(usuario.getRol()));
         return response;

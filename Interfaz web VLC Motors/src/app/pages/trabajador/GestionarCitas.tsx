@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
-import { User, Phone, Mail, CheckCircle, Calendar, Clock, AlertCircle, PlayCircle, XCircle, FileText, Edit3 } from 'lucide-react';
+import { User, Phone, Mail, CheckCircle, Calendar, Clock, AlertCircle, PlayCircle, XCircle, FileText, Edit3, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
-import * as Dialog from '@radix-ui/react-dialog'; // <-- Nuevo Import
+import * as Dialog from '@radix-ui/react-dialog';
 import { API_URL } from '../../context/AuthContext';
 
 interface Cita {
@@ -13,6 +13,10 @@ interface Cita {
   hora: string;
   estado: string; // "PENDIENTE", "EN_PROGRESO", "COMPLETADA", "CANCELADA"
   observaciones?: string;
+  montoInicial?: number;
+  montoPagado?: number;
+  metodoPago?: string;
+  pagoRegistrado?: boolean;
   cliente: {
     nombre: string;
     apellido: string;
@@ -112,6 +116,13 @@ export const GestionarCitas = () => {
     setModalAbierto(true);
   };
 
+  const prioridadEstado: Record<string, number> = {
+    PENDIENTE: 0,
+    EN_PROGRESO: 1,
+    COMPLETADA: 2,
+    CANCELADA: 3,
+  };
+
   const citasDeLaSemana = citas.filter((cita) => {
     const fechaCita = new Date(cita.fecha + 'T00:00:00');
     const hoy = new Date();
@@ -120,7 +131,12 @@ export const GestionarCitas = () => {
     limiteSemana.setDate(hoy.getDate() + 7);
     limiteSemana.setHours(23, 59, 59, 999);
     return fechaCita >= hoy && fechaCita <= limiteSemana;
-  }).sort((a, b) => new Date(`${a.fecha}T${a.hora}`).getTime() - new Date(`${b.fecha}T${b.hora}`).getTime());
+  }).sort((a, b) => {
+    const prioridadA = prioridadEstado[a.estado?.toUpperCase()] ?? 2;
+    const prioridadB = prioridadEstado[b.estado?.toUpperCase()] ?? 2;
+    if (prioridadA !== prioridadB) return prioridadA - prioridadB;
+    return new Date(`${a.fecha}T${a.hora}`).getTime() - new Date(`${b.fecha}T${b.hora}`).getTime();
+  });
 
   const getEstadoConfig = (estado: string) => {
     switch (estado?.toUpperCase()) {
@@ -249,6 +265,17 @@ export const GestionarCitas = () => {
                           Terminar Servicio
                         </Button>
                       )}
+                      {estadoUpper === 'COMPLETADA' && (
+                        cita.pagoRegistrado ? (
+                          <span className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-500/10 px-3 py-2 text-sm font-medium text-green-700 dark:text-green-400">
+                            <CheckCircle size={16} /> Pago recibido: S/ {Number(cita.montoPagado).toFixed(2)} ({cita.metodoPago?.replace('_', ' ').toLowerCase()})
+                          </span>
+                        ) : (
+                          <span className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+                            <Banknote size={16} /> Servicio terminado · pendiente de pago administrativo
+                          </span>
+                        )
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -261,8 +288,8 @@ export const GestionarCitas = () => {
       {/* --- MODAL PARA ESCRIBIR OBSERVACIONES --- */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl z-50">
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl z-50">
             <Dialog.Title className="mb-2 text-card-foreground text-lg font-bold flex items-center gap-2">
               <FileText size={20} className="text-accent" />
               Observaciones del Servicio

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { CountryCodeSelect } from '../components/ui/CountryCodeSelect';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import {
   Bike,
@@ -25,9 +26,11 @@ import { toast } from 'sonner';
 interface RegisterForm {
   nombre: string;
   apellido: string;
-  dni: string;
+  tipoDocumento: 'DNI' | 'CE';
+  numeroDocumento: string;
   email: string;
   telefono: string;
+  codigoPais: string;
   direccion: string;
   placaMototaxi: string;
   marcaMototaxi: string;
@@ -123,6 +126,7 @@ export const RegisterPage = () => {
   });
 
   const password = watch('password', '');
+  const codigoPais = watch('codigoPais', '+51');
   const marcaSeleccionada = watch('marcaMototaxi', '');
   const modelosDisponibles = marcaSeleccionada ? CATALOGO_MOTOTAXIS[marcaSeleccionada] || [] : [];
 
@@ -133,10 +137,11 @@ export const RegisterPage = () => {
       const success = await registerUser({
         nombre: data.nombre.trim(),
         apellido: data.apellido.trim(),
-        dni: data.dni.trim(),
+        tipoDocumento: data.tipoDocumento,
+        numeroDocumento: data.numeroDocumento.trim().toUpperCase(),
         email: data.email.trim().toLowerCase(),
         password: data.password,
-        telefono: data.telefono.trim(),
+        telefono: `${data.codigoPais}${data.telefono.replace(/\D/g, '')}`,
         direccion: data.direccion.trim(),
         placaMototaxi: data.placaMototaxi.trim().toUpperCase(),
         marcaMototaxi: data.marcaMototaxi,
@@ -148,11 +153,9 @@ export const RegisterPage = () => {
         setTimeout(() => {
           navigate('/');
         }, 1200);
-      } else {
-        toast.error('El DNI o correo electrónico ya está registrado.');
       }
-    } catch {
-      toast.error('Ocurrió un error al procesar el registro. Intenta nuevamente.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Ocurrió un error al procesar el registro.');
     } finally {
       setLoading(false);
     }
@@ -281,42 +284,61 @@ export const RegisterPage = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="tipoDocumento" className="text-sm font-medium text-foreground">Documento de identidad *</label>
+                      <select id="tipoDocumento" className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground" {...register('tipoDocumento', { required: 'Selecciona un documento' })} defaultValue="DNI">
+                        <option value="DNI">DNI</option>
+                        <option value="CE">Carnet de extranjería</option>
+                      </select>
+                      {errors.tipoDocumento && <p className="text-xs text-destructive">{errors.tipoDocumento.message}</p>}
+                    </div>
+
                     <div className="relative">
                       <CreditCard size={18} className="absolute left-3 top-[42px] text-muted-foreground" />
                       <Input
-                        label="DNI *"
-                        placeholder="12345678"
-                        inputMode="numeric"
-                        maxLength={8}
+                        label={`${watch('tipoDocumento', 'DNI') === 'CE' ? 'Carnet de extranjería' : 'DNI'} *`}
+                        placeholder={watch('tipoDocumento', 'DNI') === 'CE' ? '123456789' : '12345678'}
+                        inputMode={watch('tipoDocumento', 'DNI') === 'CE' ? 'text' : 'numeric'}
+                        maxLength={watch('tipoDocumento', 'DNI') === 'CE' ? 12 : 8}
                         className="pl-10"
-                        error={errors.dni?.message}
-                        {...register('dni', {
-                          required: 'El DNI es obligatorio',
-                          pattern: {
-                            value: /^\d{8}$/,
-                            message: 'Debe tener exactamente 8 dígitos numéricos',
-                          },
+                        error={errors.numeroDocumento?.message}
+                        {...register('numeroDocumento', {
+                          required: 'El número de documento es obligatorio',
+                          pattern: watch('tipoDocumento', 'DNI') === 'CE'
+                            ? { value: /^[A-Za-z0-9]{9,12}$/, message: 'El CE debe tener entre 9 y 12 caracteres alfanuméricos' }
+                            : { value: /^\d{8}$/, message: 'El DNI debe tener exactamente 8 dígitos numéricos' },
                         })}
                       />
                     </div>
 
-                    <div className="relative">
-                      <Phone size={18} className="absolute left-3 top-[42px] text-muted-foreground" />
-                      <Input
-                        label="Teléfono / Celular *"
-                        placeholder="987654321"
-                        inputMode="tel"
-                        maxLength={12}
-                        className="pl-10"
-                        error={errors.telefono?.message}
-                        {...register('telefono', {
-                          required: 'El número de teléfono es obligatorio',
-                          pattern: {
-                            value: /^(?:\+51|51)?\s?9\d{8}$/,
-                            message: 'Ingresa un número celular válido (ej. 987654321)',
-                          },
-                        })}
-                      />
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="telefono" className="text-sm font-medium text-foreground">Teléfono / Celular *</label>
+                      <div className="flex h-10 overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
+                        <CountryCodeSelect
+                          value={codigoPais}
+                          className="w-[76px]"
+                          registration={register('codigoPais', { required: 'Selecciona el código de país' })}
+                        />
+                        <Phone size={17} className="ml-3 mt-3 shrink-0 text-muted-foreground" />
+                        <input
+                          id="telefono"
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={12}
+                          placeholder={codigoPais === '+51' ? '987654321' : 'Número telefónico'}
+                          className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                          {...register('telefono', {
+                            required: 'El número de teléfono es obligatorio',
+                            setValueAs: (value: string) => value.replace(/\D/g, ''),
+                            pattern: {
+                              value: /^\d{6,12}$/,
+                              message: 'Ingresa entre 6 y 12 dígitos',
+                            },
+                            validate: (value) => codigoPais !== '+51' || /^9\d{8}$/.test(value) || 'Para Perú, ingresa un celular de 9 dígitos que empiece con 9',
+                          })}
+                        />
+                      </div>
+                      {errors.telefono && <p className="text-xs text-destructive">{errors.telefono.message}</p>}
                     </div>
                   </div>
 

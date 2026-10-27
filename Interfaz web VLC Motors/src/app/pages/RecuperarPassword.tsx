@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
-import { Bike, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Bike, Mail, ArrowLeft, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
@@ -22,12 +22,9 @@ export const RecuperarPasswordPage = () => {
     formState: { errors },
   } = useForm<RecuperarForm>();
 
-  const onSubmit = async (data: RecuperarForm) => {
+  const onSubmit = async (_data: RecuperarForm) => {
     setLoading(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    toast.success('Instrucciones enviadas a tu correo');
+    toast.info('La recuperación de contraseña por correo todavía no está habilitada. Contacta al administrador.');
     setEnviado(true);
     setLoading(false);
   };
@@ -45,15 +42,12 @@ export const RecuperarPasswordPage = () => {
           className="w-full max-w-md"
         >
           <div className="bg-card border border-border rounded-2xl p-8 shadow-xl text-center">
-            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle size={32} className="text-green-500" />
+            <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={32} className="text-amber-500" />
             </div>
-            <h2 className="mb-4 text-foreground">¡Correo Enviado!</h2>
+            <h2 className="mb-4 text-foreground">Recuperación no disponible</h2>
             <p className="text-muted-foreground mb-6">
-              Hemos enviado las instrucciones para restablecer tu contraseña a tu correo electrónico.
-            </p>
-            <p className="text-sm text-muted-foreground mb-6">
-              Si no recibes el correo en unos minutos, revisa tu carpeta de spam.
+              El envío de instrucciones por correo todavía no está habilitado en el sistema. Contacta al administrador para restablecer tu acceso.
             </p>
             <Link to="/">
               <Button variant="accent" className="w-full">

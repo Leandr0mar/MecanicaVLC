@@ -3,6 +3,7 @@ import { Button } from '../ui/button';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 interface HeaderProps {
   title?: string;
@@ -13,7 +14,12 @@ export const Header = ({ title }: HeaderProps) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
+    const confirmado = await logout();
+    if (confirmado) {
+      toast.success('Sesión cerrada correctamente');
+    } else {
+      toast.warning('Sesión cerrada en este dispositivo, pero el servidor no confirmó el cierre.');
+    }
     navigate('/');
   };
   return (

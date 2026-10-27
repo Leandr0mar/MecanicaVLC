@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -51,6 +52,9 @@ public class AuthRestController {
             Usuario usuario = usuarioService.buscarPorEmail(request.getEmail())
                     .orElseThrow(() -> new IllegalStateException("Usuario no encontrado después de autenticación"));
             return ResponseEntity.ok(LoginResponse.fromUsuario(usuario));
+        } catch (DisabledException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Tu cuenta está desactivada. Contacta al administrador."));
         } catch (AuthenticationException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Credenciales inválidas"));
@@ -90,9 +94,9 @@ public class AuthRestController {
 
     @PostMapping("/registrar")
     public ResponseEntity<?> register(@Valid @RequestBody ClienteRegistrationRequest request) {
-        if (usuarioService.buscarPorDni(request.getDni()).isPresent()) {
+        if (usuarioService.buscarPorNumeroDocumento(request.getNumeroDocumento()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "El DNI ya está registrado"));
+                    .body(Map.of("error", "El documento de identidad ya está registrado"));
         }
         if (clienteService.buscarPorEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -102,7 +106,9 @@ public class AuthRestController {
         Cliente cliente = new Cliente();
         cliente.setNombre(request.getNombre());
         cliente.setApellido(request.getApellido());
-        cliente.setDni(request.getDni());
+        cliente.setTipoDocumento(request.getTipoDocumento());
+        cliente.setNumeroDocumento(request.getNumeroDocumento());
+        cliente.setDni("DNI".equals(request.getTipoDocumento()) ? request.getNumeroDocumento() : null);
         cliente.setEmail(request.getEmail());
         cliente.setContrasenia(passwordEncoder.encode(request.getPassword()));
         cliente.setTelefono(request.getTelefono());
