@@ -8,13 +8,6 @@ import { toast } from 'sonner';
 import { API_URL } from '../../context/AuthContext';
 
 const COLORS = ['#d4af37', '#3b82f6', '#10b981', '#f59e0b', '#6366f1'];
-const STATUS_COLORS: { [key: string]: string } = {
-  'PENDIENTE': '#f59e0b',
-  'EN_PROGRESO': '#3b82f6',
-  'COMPLETADA': '#10b981',
-  'CANCELADA': '#ef4444'
-};
-
 export const Reportes = () => {
   const [loading, setLoading] = useState(true);
   
@@ -40,119 +33,15 @@ export const Reportes = () => {
   const cargarMetricas = async () => {
     try {
       setLoading(true);
-      
-      // Consultamos todos los datos necesarios en paralelo
-      const [resOrdenes, resCitas, resResenas] = await Promise.all([
-        fetch(`${API_URL}/api/ordenes`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/citas`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/reseñas`, { credentials: 'include' })
-      ]);
-
-      if ([resOrdenes, resCitas, resResenas].some((response) => response.status === 401)) {
-        return (window.location.href = '/iniciar-sesion');
-      }
-      if (![resOrdenes, resCitas, resResenas].every((response) => response.ok)) {
-        throw new Error('No se pudieron cargar los datos de los reportes');
-      }
-
-      const ordenes = await resOrdenes.json();
-      const citas = await resCitas.json();
-      const resenas = await resResenas.json();
-
-      const hoy = new Date();
-      const mesActual = hoy.getMonth();
-      const añoActual = hoy.getFullYear();
-
-      // --- 1. CÁLCULO DE MÉTRICAS GLOBALES ---
-      const ordenesPagadas = ordenes.filter((o: any) => o.estadoRecojo === 'RECOGIDO' && o.fechaPago);
-      const citasCompletadas = citas.filter((c: any) => c.estado === 'COMPLETADA');
-      const citasPagadas = citas.filter((c: any) => c.pagoRegistrado && c.fechaPago && Number.isFinite(Number(c.montoPagado)));
-      
-      const ingresosOrdenes = ordenesPagadas.reduce((sum: number, o: any) => sum + o.montoTotal, 0);
-      const ingresosCitas = citasPagadas.reduce((sum: number, c: any) => sum + Number(c.montoPagado), 0);
-      
-      const citasEsteMes = citas.filter((c: any) => {
-        const fechaCita = new Date(c.fecha + 'T00:00:00');
-        return fechaCita.getMonth() === mesActual && fechaCita.getFullYear() === añoActual;
-      });
-
-      const calificaciones = resenas
-        .map((resena: any) => Number(resena.calificacion))
-        .filter((calificacion: number) => Number.isFinite(calificacion) && calificacion >= 1 && calificacion <= 5);
-      const promSat = calificaciones.length > 0
-        ? (calificaciones.reduce((sum: number, calificacion: number) => sum + calificacion, 0) / calificaciones.length).toFixed(1)
-        : '0.0';
-
-      setMetricas({
-        ingresosTotales: ingresosOrdenes + ingresosCitas,
-        totalCitasMes: citasEsteMes.length,
-        serviciosCompletados: citasCompletadas.length,
-        promedioSatisfaccion: promSat,
-        totalResenas: calificaciones.length
-      });
-
-      // --- 2. GRÁFICO: VENTAS MENSUALES (Últimos 6 meses) ---
-      const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
-        const d = new Date(añoActual, mesActual - i, 1);
-        return { mesNum: d.getMonth(), año: d.getFullYear(), nombre: d.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(), ingresos: 0 };
-      }).reverse();
-
-      // Sumar Órdenes a los meses
-      ordenesPagadas.forEach((o: any) => {
-        if (!o.fechaPago) return;
-        const fecha = new Date(o.fechaPago);
-        const mesIndex = ultimos6Meses.findIndex(m => m.mesNum === fecha.getMonth() && m.año === fecha.getFullYear());
-        if (mesIndex !== -1) ultimos6Meses[mesIndex].ingresos += o.montoTotal;
-      });
-
-      // Sumar Citas (Servicios) a los meses
-      citasPagadas.forEach((c: any) => {
-        const fecha = new Date(c.fechaPago);
-        const mesIndex = ultimos6Meses.findIndex(m => m.mesNum === fecha.getMonth() && m.año === fecha.getFullYear());
-        if (mesIndex !== -1) ultimos6Meses[mesIndex].ingresos += Number(c.montoPagado);
-      });
-
-      setVentasMensuales(ultimos6Meses);
-
-      // --- 3. GRÁFICO: DISTRIBUCIÓN DE ESTADO DE CITAS ---
-      const conteoEstados = citas.reduce((acc: any, cita: any) => {
-        acc[cita.estado] = (acc[cita.estado] || 0) + 1;
-        return acc;
-      }, {});
-
-      const formatEstados = Object.keys(conteoEstados).map(key => ({
-        name: key.replace('_', ' '),
-        value: conteoEstados[key],
-        color: STATUS_COLORS[key] || '#9ca3af'
-      }));
-      setDistribucionCitas(formatEstados);
-
-      // --- 4. GRÁFICO: TOP 5 PRODUCTOS MÁS VENDIDOS ---
-      const mapProductos: { [key: string]: number } = {};
-      ordenesPagadas.forEach((o: any) => {
-        o.items?.forEach((item: any) => {
-          const nombre = item.producto?.nombre || 'Desconocido';
-          mapProductos[nombre] = (mapProductos[nombre] || 0) + item.cantidad;
-        });
-      });
-      const topProdList = Object.keys(mapProductos)
-        .map(nombre => ({ nombre, cantidad: mapProductos[nombre] }))
-        .sort((a, b) => b.cantidad - a.cantidad)
-        .slice(0, 5); // Tomamos solo los 5 principales
-      setTopProductos(topProdList);
-
-      // --- 5. GRÁFICO: TOP SERVICIOS MÁS SOLICITADOS ---
-      const mapServicios: { [key: string]: number } = {};
-      citas.forEach((c: any) => {
-        const nombre = c.servicio?.nombreServicio || 'Desconocido';
-        mapServicios[nombre] = (mapServicios[nombre] || 0) + 1;
-      });
-      const topServList = Object.keys(mapServicios)
-        .map(nombre => ({ nombre, cantidad: mapServicios[nombre] }))
-        .sort((a, b) => b.cantidad - a.cantidad)
-        .slice(0, 5);
-      setTopServicios(topServList);
-
+      const response = await fetch(`${API_URL}/api/reportes/resumen`, { credentials: 'include' });
+      if (response.status === 401) return (window.location.href = '/iniciar-sesion');
+      if (!response.ok) throw new Error('No se pudieron cargar los datos de los reportes');
+      const data = await response.json();
+      setMetricas(data.metricas);
+      setVentasMensuales(data.ventasMensuales ?? []);
+      setDistribucionCitas(data.distribucionCitas ?? []);
+      setTopProductos(data.topProductos ?? []);
+      setTopServicios(data.topServicios ?? []);
     } catch (error) {
       toast.error('Error al procesar las métricas de reportes');
     } finally {

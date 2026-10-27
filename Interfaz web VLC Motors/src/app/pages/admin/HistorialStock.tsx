@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 // Se añadieron los import de Button y el icono Download
 import { ArrowUp, ArrowDown, Package, Activity, Download } from 'lucide-react';
@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { API_URL } from '../../context/AuthContext';
 // Importamos la librería de Excel
 import * as XLSX from 'xlsx';
-import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
+import { AdminSearchInput } from '../../components/ui/AdminSearchInput';
 
 interface Historial {
   idHistorialStock: number;
@@ -25,21 +25,41 @@ export const HistorialStock = () => {
   const [movimientos, setMovimientos] = useState<Historial[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
-  const movimientosFiltrados = movimientos.filter((movimiento) => matchesAdminSearch(movimiento, busqueda));
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalMovimientos, setTotalMovimientos] = useState(0);
+  const [resumen, setResumen] = useState({ movimientosEsteMes: 0, entradasTotales: 0, salidasTotales: 0 });
+  const busquedaInicial = useRef(true);
+  const movimientosFiltrados = movimientos;
 
   useEffect(() => {
     cargarHistorial();
-  }, []);
+  }, [pagina]);
+
+  useEffect(() => {
+    if (busquedaInicial.current) { busquedaInicial.current = false; return; }
+    const temporizador = window.setTimeout(() => {
+      if (pagina !== 0) setPagina(0);
+      else cargarHistorial();
+    }, busqueda ? 300 : 0);
+    return () => window.clearTimeout(temporizador);
+  }, [busqueda]);
 
   const cargarHistorial = async () => {
     try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/historial-stock`, { credentials: 'include' });
+      if (!movimientos.length) setLoading(true);
+      const params = new URLSearchParams({ pagina: String(pagina), tamano: '20', q: busqueda.trim() });
+      const [res, resResumen] = await Promise.all([
+        fetch(`${API_URL}/api/historial-stock/pagina?${params}`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/historial-stock/resumen`, { credentials: 'include' }),
+      ]);
       if (res.status === 401) return (window.location.href = '/iniciar-sesion');
       if (!res.ok) throw new Error('Error al cargar');
-      
-      const data = await res.json();
-      setMovimientos(data);
+      const pageData = await res.json();
+      setMovimientos(pageData.contenido ?? []);
+      setTotalPaginas(pageData.totalPaginas ?? 0);
+      setTotalMovimientos(pageData.totalElementos ?? 0);
+      if (resResumen.ok) setResumen(await resResumen.json());
     } catch (error) {
       toast.error('Error al cargar el historial de stock');
     } finally {
@@ -48,13 +68,25 @@ export const HistorialStock = () => {
   };
 
   // --- NUEVA LÓGICA: EXPORTAR A EXCEL ---
-  const exportarExcel = () => {
-    if (movimientosFiltrados.length === 0) {
+  const exportarExcel = async () => {
+    if (totalMovimientos === 0) {
       return toast.error('No hay movimientos de stock para exportar');
     }
 
+    const params = new URLSearchParams({ pagina: '0', tamano: '100', q: busqueda.trim() });
+    const inicial = await fetch(`${API_URL}/api/historial-stock/pagina?${params}`, { credentials: 'include' });
+    if (!inicial.ok) return toast.error('No se pudo preparar la exportación del historial');
+    const primeraPagina = await inicial.json();
+    const movimientosExportar: Historial[] = [...(primeraPagina.contenido ?? [])];
+    for (let numero = 1; numero < (primeraPagina.totalPaginas ?? 0); numero += 1) {
+      params.set('pagina', String(numero));
+      const siguiente = await fetch(`${API_URL}/api/historial-stock/pagina?${params}`, { credentials: 'include' });
+      if (!siguiente.ok) return toast.error('No se pudo completar la exportación del historial');
+      movimientosExportar.push(...((await siguiente.json()).contenido ?? []));
+    }
+
     // 1. Mapeamos los datos para crear cabeceras legibles en el Excel
-    const datosExcel = movimientosFiltrados.map((m) => {
+    const datosExcel = movimientosExportar.map((m) => {
       return {
         'ID Transacción': m.idHistorialStock,
         'Producto': m.producto?.nombre || 'Producto no disponible',
@@ -87,19 +119,9 @@ export const HistorialStock = () => {
   };
 
   // --- CÁLCULOS MATEMÁTICOS PARA LAS TARJETAS ESTADÍSTICAS ---
-  const movimientosEsteMes = movimientos.filter(m => {
-    const fecha = new Date(m.fechaMovimiento);
-    const hoy = new Date();
-    return fecha.getMonth() === hoy.getMonth() && fecha.getFullYear() === hoy.getFullYear();
-  }).length;
-
-  const entradasTotales = movimientos
-    .filter(m => m.tipoMovimiento.toUpperCase().includes('ENTRADA'))
-    .reduce((sum, m) => sum + m.cantidad, 0);
-
-  const salidasTotales = movimientos
-    .filter(m => m.tipoMovimiento.toUpperCase().includes('SALIDA'))
-    .reduce((sum, m) => sum + m.cantidad, 0);
+  const movimientosEsteMes = resumen.movimientosEsteMes;
+  const entradasTotales = resumen.entradasTotales;
+  const salidasTotales = resumen.salidasTotales;
 
   return (
     <div className="space-y-6">
@@ -214,6 +236,15 @@ export const HistorialStock = () => {
           )}
         </CardContent>
       </Card>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>{totalMovimientos === 0 ? 'Sin movimientos' : `Mostrando ${pagina * 20 + 1}–${Math.min((pagina + 1) * 20, totalMovimientos)} de ${totalMovimientos} movimientos`}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={pagina === 0 || loading} onClick={() => setPagina((actual) => Math.max(0, actual - 1))}>Anterior</Button>
+          <span>Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}</span>
+          <Button variant="outline" size="sm" disabled={pagina + 1 >= totalPaginas || loading} onClick={() => setPagina((actual) => actual + 1)}>Siguiente</Button>
+        </div>
+      </div>
     </div>
   );
 };

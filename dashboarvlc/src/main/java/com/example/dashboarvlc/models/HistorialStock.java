@@ -7,7 +7,10 @@ import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // <-- IMPORTANTE
 
 @Entity
-@Table(name = "historial_stock")
+@Table(name = "historial_stock", indexes = {
+    @Index(name = "idx_historial_fecha_movimiento", columnList = "fecha_movimiento"),
+    @Index(name = "idx_historial_producto_fecha", columnList = "id_producto, fecha_movimiento")
+})
 @Data
 public class HistorialStock {
     @Id

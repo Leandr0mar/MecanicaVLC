@@ -143,8 +143,6 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
    @Override
    @Transactional(readOnly = true)
     public List<OrdenCompra> listarMisOrdenes(String emailCliente) {
-        return ordenCompraRepository.findAll().stream()
-                .filter(o -> o.getCliente() != null && o.getCliente().getEmail().equals(emailCliente))
-                .toList();
+        return ordenCompraRepository.findByCliente_EmailOrderByFechaReservaDesc(emailCliente);
     } 
 }

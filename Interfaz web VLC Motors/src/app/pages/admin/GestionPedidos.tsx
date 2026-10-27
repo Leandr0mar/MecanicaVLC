@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
 import { Calendar, Edit2, Trash2, CheckCircle, XCircle, Filter, Download, Package, User, Clock, FileText } from 'lucide-react';
@@ -7,7 +7,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
 import * as XLSX from 'xlsx';
-import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
+import { AdminSearchInput } from '../../components/ui/AdminSearchInput';
 
 interface ItemPedido {
   idItemComprado: number;
@@ -31,25 +31,45 @@ export const GestionPedidos = () => {
   
   const [filtroEstado, setFiltroEstado] = useState<string | 'TODOS'>('TODOS');
   const [busqueda, setBusqueda] = useState('');
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalPedidos, setTotalPedidos] = useState(0);
+  const busquedaInicial = useRef(true);
   
   // Estados para el Modal
   const [modalAbierto, setModalAbierto] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState<Pedido | null>(null);
   const [nuevoEstado, setNuevoEstado] = useState<string>('');
 
+  useEffect(() => { cargarDatos(); }, [pagina, filtroEstado]);
+
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    if (busquedaInicial.current) { busquedaInicial.current = false; return; }
+    const temporizador = window.setTimeout(() => {
+      if (pagina !== 0) setPagina(0);
+      else cargarDatos();
+    }, busqueda ? 300 : 0);
+    return () => window.clearTimeout(temporizador);
+  }, [busqueda]);
 
   const cargarDatos = async () => {
     try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/ordenes`, { credentials: 'include' });
+      if (!pedidos.length) setLoading(true);
+      const params = new URLSearchParams({ pagina: String(pagina), tamano: '20', q: busqueda.trim() });
+      if (filtroEstado !== 'TODOS') params.set('estado', filtroEstado);
+      const res = await fetch(`${API_URL}/api/ordenes/pagina?${params}`, { credentials: 'include' });
 
       if (res.status === 401) return (window.location.href = '/iniciar-sesion');
       if (!res.ok) throw new Error('Error al cargar pedidos');
       
-      const data = await res.json();
+      const pageData = await res.json();
+      if (pagina > 0 && pagina >= (pageData.totalPaginas ?? 0)) {
+        setPagina(Math.max(0, (pageData.totalPaginas ?? 0) - 1));
+        return;
+      }
+      const data = pageData.contenido ?? [];
+      setTotalPaginas(pageData.totalPaginas ?? 0);
+      setTotalPedidos(pageData.totalElementos ?? 0);
       const prioridad = (estado: string) => ({ PENDIENTE: 0, RECOGIDO: 1, CANCELADO: 2 }[estado?.toUpperCase()] ?? 3);
       const ordenadas = data.sort((a: Pedido, b: Pedido) =>
         prioridad(a.estadoRecojo) - prioridad(b.estadoRecojo) || b.idReserva - a.idReserva
@@ -105,17 +125,28 @@ export const GestionPedidos = () => {
     }
   };
 
-  const pedidosFiltrados = pedidos.filter(pedido =>
-    (filtroEstado === 'TODOS' || pedido.estadoRecojo === filtroEstado) && matchesAdminSearch(pedido, busqueda)
-  );
+  const pedidosFiltrados = pedidos;
 
   // --- LÓGICA: EXPORTAR A EXCEL ---
-  const exportarExcel = () => {
-    if (pedidosFiltrados.length === 0) {
+  const exportarExcel = async () => {
+    if (totalPedidos === 0) {
       return toast.error('No hay pedidos para exportar bajo el filtro actual');
     }
 
-    const datosExcel = pedidosFiltrados.map((pedido) => {
+    const params = new URLSearchParams({ pagina: '0', tamano: '100', q: busqueda.trim() });
+    if (filtroEstado !== 'TODOS') params.set('estado', filtroEstado);
+    const inicial = await fetch(`${API_URL}/api/ordenes/pagina?${params}`, { credentials: 'include' });
+    if (!inicial.ok) return toast.error('No se pudo preparar la exportación de pedidos');
+    const primeraPagina = await inicial.json();
+    const pedidosExportar: Pedido[] = [...(primeraPagina.contenido ?? [])];
+    for (let numero = 1; numero < (primeraPagina.totalPaginas ?? 0); numero += 1) {
+      params.set('pagina', String(numero));
+      const siguiente = await fetch(`${API_URL}/api/ordenes/pagina?${params}`, { credentials: 'include' });
+      if (!siguiente.ok) return toast.error('No se pudo completar la exportación de pedidos');
+      pedidosExportar.push(...((await siguiente.json()).contenido ?? []));
+    }
+
+    const datosExcel = pedidosExportar.map((pedido) => {
       // Unimos todos los productos en una sola cadena de texto para el reporte
       const resumenProductos = pedido.items?.map(i => `[x${i.cantidad}] ${i.producto?.nombre}`).join(' | ') || 'Sin productos';
 
@@ -166,10 +197,10 @@ export const GestionPedidos = () => {
           </Button>
 
           <div className="flex bg-card border border-border p-1 rounded-lg overflow-x-auto">
-            <Button variant={filtroEstado === 'TODOS' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('TODOS')} className="text-xs">Todos</Button>
-            <Button variant={filtroEstado === 'PENDIENTE' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('PENDIENTE')} className="text-xs text-yellow-600 dark:text-yellow-400">Pendientes</Button>
-            <Button variant={filtroEstado === 'RECOGIDO' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('RECOGIDO')} className="text-xs text-green-600 dark:text-green-400">Entregados</Button>
-            <Button variant={filtroEstado === 'CANCELADO' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('CANCELADO')} className="text-xs text-red-600 dark:text-red-400">Cancelados</Button>
+            <Button variant={filtroEstado === 'TODOS' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('TODOS'); }} className="text-xs">Todos</Button>
+            <Button variant={filtroEstado === 'PENDIENTE' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('PENDIENTE'); }} className="text-xs text-yellow-600 dark:text-yellow-400">Pendientes</Button>
+            <Button variant={filtroEstado === 'RECOGIDO' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('RECOGIDO'); }} className="text-xs text-green-600 dark:text-green-400">Entregados</Button>
+            <Button variant={filtroEstado === 'CANCELADO' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('CANCELADO'); }} className="text-xs text-red-600 dark:text-red-400">Cancelados</Button>
           </div>
         </div>
       </div>
@@ -239,6 +270,15 @@ export const GestionPedidos = () => {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>{totalPedidos === 0 ? 'Sin pedidos' : `Mostrando ${pagina * 20 + 1}–${Math.min((pagina + 1) * 20, totalPedidos)} de ${totalPedidos} pedidos`}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={pagina === 0 || loading} onClick={() => setPagina((actual) => Math.max(0, actual - 1))}>Anterior</Button>
+          <span>Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}</span>
+          <Button variant="outline" size="sm" disabled={pagina + 1 >= totalPaginas || loading} onClick={() => setPagina((actual) => actual + 1)}>Siguiente</Button>
+        </div>
       </div>
 
       {/* MODAL PARA DETALLES Y CAMBIO DE ESTADO */}

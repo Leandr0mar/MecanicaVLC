@@ -3,6 +3,8 @@ package com.example.dashboarvlc.controllers.rest;
 import com.example.dashboarvlc.models.*;
 import com.example.dashboarvlc.services.*;
 import com.example.dashboarvlc.repositories.SesionActivaRepository;
+import com.example.dashboarvlc.repositories.UsuarioRepository;
+import com.example.dashboarvlc.dto.PaginaRespuesta;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import jakarta.validation.Valid;
@@ -11,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +33,7 @@ public class UsuarioRestController {
     private final PasswordEncoder passwordEncoder; // Inyectamos el encriptador
     private final Validator validator;
     private final PresenciaService presenciaService;
+    private final UsuarioRepository usuarioRepository;
 
     // Obtener todos los usuarios para la tabla (Spring traerá Clientes, Trabajadores y Admins automáticamente)
     @GetMapping
@@ -41,6 +46,24 @@ public class UsuarioRestController {
                 .map(usuario -> UsuarioPresenciaResponse.desde(usuario, presenciaPorUsuario.get(usuario.getIdUsuario())))
                 .toList();
         return ResponseEntity.ok(usuarios);
+    }
+
+    @GetMapping("/pagina")
+    public ResponseEntity<PaginaRespuesta<UsuarioPresenciaResponse>> listarPagina(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano,
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(required = false) Integer rol) {
+        int paginaSegura = Math.max(0, pagina);
+        int tamanoSeguro = Math.max(1, Math.min(tamano, 100));
+        Map<Long, SesionActivaRepository.ResumenPresencia> presenciaPorUsuario = new java.util.HashMap<>();
+        for (SesionActivaRepository.ResumenPresencia resumen : presenciaService.obtenerResumen()) {
+            presenciaPorUsuario.put(resumen.getUsuarioId(), resumen);
+        }
+        var usuarios = usuarioRepository.buscarPagina(q.trim(), rol,
+                PageRequest.of(paginaSegura, tamanoSeguro, Sort.by(Sort.Direction.DESC, "fechaRegistro")))
+                .map(usuario -> UsuarioPresenciaResponse.desde(usuario, presenciaPorUsuario.get(usuario.getIdUsuario())));
+        return ResponseEntity.ok(PaginaRespuesta.desde(usuarios));
     }
 
     @PatchMapping("/{id}/estado")

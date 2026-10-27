@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
-@Table(name = "usuarios")
+@Table(name = "usuarios", indexes = {
+    @Index(name = "idx_usuarios_rol_fecha", columnList = "rol, fecha_registro")
+})
 @Inheritance(strategy = InheritanceType.JOINED)
 @Data
 public abstract class Usuario {

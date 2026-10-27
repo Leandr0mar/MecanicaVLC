@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { API_URL } from '../../context/AuthContext';
 import { useAuth } from '../../context/AuthContext';
-import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
+import { AdminSearchInput } from '../../components/ui/AdminSearchInput';
 import { PAISES_CODIGO } from '../../utils/phoneCountries';
 
 // Catálogo vehicular
@@ -112,6 +112,10 @@ export const GestionUsuarios = () => {
   // Filtro de rol en tabla: 1=Admin, 2=Trabajador, 3=Cliente, 'todos'=Sin filtro
   const [filtroActivo, setFiltroActivo] = useState<number | 'todos'>('todos');
   const [busqueda, setBusqueda] = useState('');
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalUsuarios, setTotalUsuarios] = useState(0);
+  const busquedaInicial = useRef(true);
 
   // Configuración de validación profesional
   const {
@@ -138,20 +142,41 @@ export const GestionUsuarios = () => {
 
   useEffect(() => {
     cargarUsuarios();
+  }, [pagina, filtroActivo]);
+
+  useEffect(() => {
+    if (busquedaInicial.current) { busquedaInicial.current = false; return; }
+    const temporizador = window.setTimeout(() => {
+      if (pagina !== 0) setPagina(0);
+      else cargarUsuarios();
+    }, busqueda ? 300 : 0);
+    return () => window.clearTimeout(temporizador);
+  }, [busqueda]);
+
+  useEffect(() => {
     const intervalo = window.setInterval(() => cargarUsuarios(false), 15_000);
     return () => window.clearInterval(intervalo);
-  }, []);
+  }, [pagina, filtroActivo, busqueda]);
 
   const cargarUsuarios = async (mostrarCarga = true) => {
     try {
       if (mostrarCarga) setLoading(true);
-      const res = await fetch(`${API_URL}/api/usuarios`, { credentials: 'include' });
+      const params = new URLSearchParams({ pagina: String(pagina), tamano: '18', q: busqueda.trim() });
+      if (filtroActivo !== 'todos') params.set('rol', String(filtroActivo));
+      const res = await fetch(`${API_URL}/api/usuarios/pagina?${params}`, { credentials: 'include' });
       if (res.status === 401) {
         window.location.href = '/iniciar-sesion';
         return;
       }
       if (!res.ok) throw new Error('Error al cargar');
-      setUsuarios(await res.json());
+      const paginaRespuesta = await res.json();
+      if (pagina > 0 && pagina >= (paginaRespuesta.totalPaginas ?? 0)) {
+        setPagina(Math.max(0, (paginaRespuesta.totalPaginas ?? 0) - 1));
+        return;
+      }
+      setUsuarios(paginaRespuesta.contenido ?? []);
+      setTotalPaginas(paginaRespuesta.totalPaginas ?? 0);
+      setTotalUsuarios(paginaRespuesta.totalElementos ?? 0);
     } catch {
       toast.error('Error al cargar la lista de usuarios');
     } finally {
@@ -317,10 +342,7 @@ export const GestionUsuarios = () => {
     };
   };
 
-  const usuariosFiltrados = usuarios.filter((usuario) => {
-    const coincideRol = filtroActivo === 'todos' || usuario.rol === filtroActivo;
-    return coincideRol && matchesAdminSearch(usuario, busqueda);
-  });
+  const usuariosFiltrados = usuarios;
 
   return (
     <div className="space-y-6">
@@ -340,7 +362,7 @@ export const GestionUsuarios = () => {
             <Button
               variant={filtroActivo === 'todos' ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setFiltroActivo('todos')}
+              onClick={() => { setFiltroActivo('todos'); setPagina(0); }}
               className="text-xs"
             >
               Todos
@@ -348,7 +370,7 @@ export const GestionUsuarios = () => {
             <Button
               variant={filtroActivo === 1 ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setFiltroActivo(1)}
+              onClick={() => { setFiltroActivo(1); setPagina(0); }}
               className="text-xs gap-1"
             >
               <Shield size={14} /> Admins
@@ -356,7 +378,7 @@ export const GestionUsuarios = () => {
             <Button
               variant={filtroActivo === 2 ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setFiltroActivo(2)}
+              onClick={() => { setFiltroActivo(2); setPagina(0); }}
               className="text-xs gap-1"
             >
               <Wrench size={14} /> Trabajadores
@@ -364,7 +386,7 @@ export const GestionUsuarios = () => {
             <Button
               variant={filtroActivo === 3 ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setFiltroActivo(3)}
+              onClick={() => { setFiltroActivo(3); setPagina(0); }}
               className="text-xs gap-1"
             >
               <User size={14} /> Clientes
@@ -499,6 +521,15 @@ export const GestionUsuarios = () => {
           })}
         </div>
       )}
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>{totalUsuarios === 0 ? 'Sin usuarios' : `Mostrando ${pagina * 18 + 1}–${Math.min((pagina + 1) * 18, totalUsuarios)} de ${totalUsuarios} usuarios`}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={pagina === 0 || loading} onClick={() => setPagina((actual) => Math.max(0, actual - 1))}>Anterior</Button>
+          <span>Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}</span>
+          <Button variant="outline" size="sm" disabled={pagina + 1 >= totalPaginas || loading} onClick={() => setPagina((actual) => actual + 1)}>Siguiente</Button>
+        </div>
+      </div>
 
       {/* Modal con validación profesional onBlur / onChange */}
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>

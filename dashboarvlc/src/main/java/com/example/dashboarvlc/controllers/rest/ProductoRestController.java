@@ -2,14 +2,19 @@ package com.example.dashboarvlc.controllers.rest;
 
 import com.example.dashboarvlc.models.Producto;
 import com.example.dashboarvlc.services.ProductoService;
+import com.example.dashboarvlc.repositories.ProductoRepository;
+import com.example.dashboarvlc.dto.PaginaRespuesta;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -18,6 +23,28 @@ import java.util.Map;
 public class ProductoRestController {
 
     private final ProductoService productoService;
+    private final ProductoRepository productoRepository;
+
+    @GetMapping("/pagina")
+    public ResponseEntity<PaginaRespuesta<Producto>> listarPagina(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano,
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(required = false) Long categoria,
+            @RequestParam(defaultValue = "") String marca,
+            @RequestParam(required = false) Long proveedor,
+            @RequestParam(defaultValue = "") String stock) {
+        int paginaSegura = Math.max(0, pagina);
+        int tamanoSeguro = Math.max(1, Math.min(tamano, 100));
+        return ResponseEntity.ok(PaginaRespuesta.desde(productoRepository.buscarPagina(
+                q.trim(), categoria, marca.trim(), proveedor, stock, PageRequest.of(paginaSegura, tamanoSeguro,
+                        Sort.by(Sort.Direction.ASC, "nombre")))));
+    }
+
+    @GetMapping("/marcas")
+    public ResponseEntity<List<String>> listarMarcas() {
+        return ResponseEntity.ok(productoRepository.listarMarcas());
+    }
 
     @GetMapping
     public ResponseEntity<List<Producto>> listarTodos() {

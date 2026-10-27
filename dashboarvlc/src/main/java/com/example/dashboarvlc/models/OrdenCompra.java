@@ -12,7 +12,11 @@ import com.example.dashboarvlc.models.enums.EstadoRecojo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
-@Table(name = "ordenes_compra")
+@Table(name = "ordenes_compra", indexes = {
+    @Index(name = "idx_ordenes_estado_id", columnList = "estado_recojo, id_reserva"),
+    @Index(name = "idx_ordenes_fecha_pago", columnList = "fecha_pago"),
+    @Index(name = "idx_ordenes_cliente", columnList = "id_cliente")
+})
 @Data
 public class OrdenCompra {
     @Id

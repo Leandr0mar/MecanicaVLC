@@ -4,10 +4,13 @@ import com.example.dashboarvlc.models.OrdenCompra;
 import com.example.dashboarvlc.models.enums.EstadoRecojo;
 import com.example.dashboarvlc.dto.OrdenCompraDTO;
 import com.example.dashboarvlc.services.OrdenCompraService;
+import com.example.dashboarvlc.repositories.OrdenCompraRepository;
+import com.example.dashboarvlc.dto.PaginaRespuesta;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.PageRequest;
 
 import java.security.Principal;
 import java.util.List;
@@ -20,6 +23,20 @@ import java.util.Map;
 public class OrdenCompraRestController {
 
     private final OrdenCompraService ordenCompraService;
+    private final OrdenCompraRepository ordenCompraRepository;
+
+    @GetMapping("/pagina")
+    public ResponseEntity<PaginaRespuesta<OrdenCompra>> listarPagina(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano,
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "") String estado) {
+        int paginaSegura = Math.max(0, pagina);
+        int tamanoSeguro = Math.max(1, Math.min(tamano, 100));
+        return ResponseEntity.ok(PaginaRespuesta.desde(ordenCompraRepository.buscarPagina(
+                q.trim(), estado.trim(), PageRequest.of(paginaSegura, tamanoSeguro,
+                        org.springframework.data.domain.Sort.unsorted()))));
+    }
 
     @GetMapping
     public ResponseEntity<List<OrdenCompra>> listarTodas() {

@@ -28,6 +28,12 @@ Sistema web para administrar una mecánica de mototaxis. Incluye una interfaz Re
 - Reportes, historial de stock y consolidado de ingresos.
 - Cierre de citas y registro del pago presencial.
 
+## Listados y reportes
+
+Las vistas de inventario, usuarios, citas, pedidos e historial de stock consultan páginas de hasta 20 registros y envían la búsqueda y los filtros al backend. Las rutas paginadas aceptan `pagina`, `tamano` (máximo 100) y `q`; la respuesta incluye `contenido`, `totalElementos` y `totalPaginas`. Las rutas de listado existentes se conservan para los flujos que necesitan el conjunto completo.
+
+Los reportes operativos usan `/api/reportes/resumen`, que calcula totales y agregados en el servidor para reducir el volumen transferido. Las exportaciones descargan todas las páginas únicamente cuando se solicitan. El backend también declara índices para columnas de estado, fecha y relaciones usadas en los filtros y ordenamientos frecuentes.
+
 ## Estructura
 
 ```text

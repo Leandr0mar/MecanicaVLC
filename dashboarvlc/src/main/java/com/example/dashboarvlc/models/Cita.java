@@ -11,7 +11,11 @@ import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
-@Table(name = "citas")
+@Table(name = "citas", indexes = {
+    @Index(name = "idx_citas_estado_fecha_hora", columnList = "estado, fecha, hora"),
+    @Index(name = "idx_citas_cliente_fecha", columnList = "id_cliente, fecha"),
+    @Index(name = "idx_citas_trabajador_fecha", columnList = "id_trabajador, fecha")
+})
 @Data
 public class Cita {
     @Id

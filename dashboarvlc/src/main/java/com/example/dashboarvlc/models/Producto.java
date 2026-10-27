@@ -9,7 +9,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
-@Table(name = "productos")
+@Table(name = "productos", indexes = {
+    @Index(name = "idx_productos_categoria_marca", columnList = "id_categoria, marca"),
+    @Index(name = "idx_productos_proveedor", columnList = "id_proveedor"),
+    @Index(name = "idx_productos_stock", columnList = "stock")
+})
 @Data
 public class Producto {
     @Id

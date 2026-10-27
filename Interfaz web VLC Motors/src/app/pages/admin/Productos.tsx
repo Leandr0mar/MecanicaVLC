@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '../../components/ui/button';
 import {
@@ -18,7 +18,7 @@ import { formatCurrency } from '../../utils/currency';
 import { API_URL } from '../../context/AuthContext';
 import { ConfirmDeleteDialog } from '../../components/ui/ConfirmDeleteDialog';
 import * as XLSX from 'xlsx';
-import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
+import { AdminSearchInput } from '../../components/ui/AdminSearchInput';
 
 interface ProductoFormData {
   nombre: string;
@@ -49,6 +49,11 @@ export const Productos = () => {
   const [filtroProveedor, setFiltroProveedor] = useState<number | 'TODOS'>('TODOS');
   const [filtroStock, setFiltroStock] = useState<string | 'TODOS'>('TODOS');
   const [busqueda, setBusqueda] = useState('');
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalProductos, setTotalProductos] = useState(0);
+  const [marcas, setMarcas] = useState<string[]>([]);
+  const catalogosCargados = useRef(false);
 
   // React Hook Form con estrategia profesional onBlur + onChange
   const {
@@ -76,33 +81,70 @@ export const Productos = () => {
   const imagenUrlWatch = watch('imagenUrl', '');
 
   useEffect(() => {
-    cargarDatos();
+    cargarCatalogos();
   }, []);
 
-  const cargarDatos = async () => {
-    try {
-      setLoading(true);
-      const [resProd, resCat, resProv, resOf] = await Promise.all([
-        fetch(`${API_URL}/api/productos`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/categorias`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/proveedores`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/ofertas`, { credentials: 'include' }),
-      ]);
+  useEffect(() => {
+    const temporizador = window.setTimeout(() => cargarPagina(), busqueda ? 300 : 0);
+    return () => window.clearTimeout(temporizador);
+  }, [pagina, busqueda, filtroCategoria, filtroMarca, filtroProveedor, filtroStock]);
 
-      if (resProd.status === 401) {
+  const parametrosPagina = (paginaSolicitada: number, tamano = 20) => {
+    const params = new URLSearchParams({ pagina: String(paginaSolicitada), tamano: String(tamano), q: busqueda.trim() });
+    if (filtroCategoria !== 'TODAS') params.set('categoria', String(filtroCategoria));
+    if (filtroMarca !== 'TODAS') params.set('marca', filtroMarca);
+    if (filtroProveedor !== 'TODOS') params.set('proveedor', String(filtroProveedor));
+    if (filtroStock !== 'TODOS') params.set('stock', filtroStock);
+    return params;
+  };
+
+  const cargarPagina = async () => {
+    try {
+      if (!productos.length) setLoading(true);
+      const res = await fetch(`${API_URL}/api/productos/pagina?${parametrosPagina(pagina)}`, { credentials: 'include' });
+
+      if (res.status === 401) {
         toast.error('Tu sesión ha expirado');
         window.location.href = '/iniciar-sesion';
         return;
       }
-
-      if (resProd.ok) setProductos(await resProd.json());
-      if (resCat.ok) setCategorias(await resCat.json());
-      if (resProv.ok) setProveedores(await resProv.json());
-      if (resOf.ok) setOfertas(await resOf.json());
+      if (!res.ok) throw new Error('No se pudo cargar el inventario');
+      const paginaRespuesta = await res.json();
+      if (pagina > 0 && pagina >= (paginaRespuesta.totalPaginas ?? 0)) {
+        setPagina(Math.max(0, (paginaRespuesta.totalPaginas ?? 0) - 1));
+        return;
+      }
+      setProductos(paginaRespuesta.contenido ?? []);
+      setTotalPaginas(paginaRespuesta.totalPaginas ?? 0);
+      setTotalProductos(paginaRespuesta.totalElementos ?? 0);
     } catch {
       toast.error('Error al cargar la información del inventario');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cargarCatalogos = async () => {
+    if (catalogosCargados.current) return;
+    catalogosCargados.current = true;
+    try {
+      const [resCat, resProv, resOf, resMarcas] = await Promise.all([
+        fetch(`${API_URL}/api/categorias`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/proveedores`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/ofertas`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/productos/marcas`, { credentials: 'include' }),
+      ]);
+      if ([resCat, resProv, resOf, resMarcas].some((res) => res.status === 401)) {
+        window.location.href = '/iniciar-sesion';
+        return;
+      }
+      if (resCat.ok) setCategorias(await resCat.json());
+      if (resProv.ok) setProveedores(await resProv.json());
+      if (resOf.ok) setOfertas(await resOf.json());
+      if (resMarcas.ok) setMarcas(await resMarcas.json());
+    } catch {
+      catalogosCargados.current = false;
+      toast.error('No se pudieron cargar los filtros del inventario');
     }
   };
 
@@ -117,7 +159,7 @@ export const Productos = () => {
         return;
       }
       if (!res.ok) throw new Error('Error al eliminar');
-      await cargarDatos();
+      await cargarPagina();
       toast.success('Producto eliminado del inventario');
     } catch {
       toast.error('No se pudo eliminar el producto. Verifique dependencias activas.');
@@ -178,7 +220,7 @@ export const Productos = () => {
         throw new Error(errorDetail?.error || 'Verifica que el código SKU no esté duplicado');
       }
 
-      await cargarDatos();
+      await cargarPagina();
       toast.success(productoEditando ? 'Producto actualizado correctamente' : 'Producto registrado en inventario');
       setModalAbierto(false);
       setProductoEditando(null);
@@ -190,28 +232,25 @@ export const Productos = () => {
   };
 
   // Filtrado de tabla
-  const marcasUnicas = Array.from(new Set(productos.map((p) => p.marca))).filter(Boolean).sort();
-
-  const productosFiltrados = productos.filter((producto) => {
-    const cumpleCategoria = filtroCategoria === 'TODAS' || producto.categoria?.idCategoria === filtroCategoria;
-    const cumpleMarca = filtroMarca === 'TODAS' || producto.marca === filtroMarca;
-    const cumpleProveedor = filtroProveedor === 'TODOS' || producto.proveedor?.idProveedor === filtroProveedor;
-
-    let cumpleStock = true;
-    if (filtroStock === 'AGOTADO') cumpleStock = producto.stock === 0;
-    else if (filtroStock === 'POCO_STOCK') cumpleStock = producto.stock > 0 && producto.stock <= 5;
-    else if (filtroStock === 'EN_STOCK') cumpleStock = producto.stock > 5;
-
-    return cumpleCategoria && cumpleMarca && cumpleProveedor && cumpleStock && matchesAdminSearch(producto, busqueda);
-  });
+  const productosFiltrados = productos;
 
   // Exportar Excel
-  const exportarExcel = () => {
-    if (productosFiltrados.length === 0) {
+  const exportarExcel = async () => {
+    if (totalProductos === 0) {
       return toast.error('No hay productos bajo este filtro para exportar');
     }
 
-    const datosExcel = productosFiltrados.map((p) => {
+    const respuesta = await fetch(`${API_URL}/api/productos/pagina?${parametrosPagina(0, 100)}`, { credentials: 'include' });
+    if (!respuesta.ok) return toast.error('No se pudo preparar la exportación del inventario');
+    const datosPagina = await respuesta.json();
+    const productosExportar = [...(datosPagina.contenido ?? [])];
+    for (let numero = 1; numero < (datosPagina.totalPaginas ?? 0); numero += 1) {
+      const siguiente = await fetch(`${API_URL}/api/productos/pagina?${parametrosPagina(numero, 100)}`, { credentials: 'include' });
+      if (!siguiente.ok) return toast.error('No se pudo completar la exportación del inventario');
+      productosExportar.push(...((await siguiente.json()).contenido ?? []));
+    }
+
+    const datosExcel = productosExportar.map((p) => {
       const precioCalculado = p.precioFinal && p.precioFinal < p.precioVenta ? p.precioFinal : p.precioVenta;
       const estadoStock = p.stock > 10 ? 'Disponible' : p.stock > 0 ? 'Poco stock' : 'Agotado';
 
@@ -259,7 +298,7 @@ export const Productos = () => {
           <p className="text-muted-foreground text-sm">Gestiona repuestos, precios y existencias para mototaxis</p>
         </div>
 
-        <AdminSearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar repuesto por nombre, código, marca..." className="xl:mx-6" />
+        <AdminSearchInput value={busqueda} onChange={(value) => { setBusqueda(value); setPagina(0); }} placeholder="Buscar repuesto por nombre, código, marca..." className="xl:mx-6" />
 
         <div className="flex items-center gap-3">
           <Button
@@ -283,7 +322,7 @@ export const Productos = () => {
           <label className="block text-xs mb-1 text-muted-foreground font-medium">Categoría</label>
           <select
             value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value === 'TODAS' ? 'TODAS' : Number(e.target.value))}
+            onChange={(e) => { setPagina(0); setFiltroCategoria(e.target.value === 'TODAS' ? 'TODAS' : Number(e.target.value)); }}
             className="w-full px-3 py-2 text-sm bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="TODAS">Todas las categorías</option>
@@ -299,11 +338,11 @@ export const Productos = () => {
           <label className="block text-xs mb-1 text-muted-foreground font-medium">Marca</label>
           <select
             value={filtroMarca}
-            onChange={(e) => setFiltroMarca(e.target.value)}
+            onChange={(e) => { setPagina(0); setFiltroMarca(e.target.value); }}
             className="w-full px-3 py-2 text-sm bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="TODAS">Todas las marcas</option>
-            {marcasUnicas.map((marca) => (
+            {marcas.map((marca) => (
               <option key={String(marca)} value={String(marca)}>
                 {String(marca)}
               </option>
@@ -315,7 +354,7 @@ export const Productos = () => {
           <label className="block text-xs mb-1 text-muted-foreground font-medium">Proveedor</label>
           <select
             value={filtroProveedor}
-            onChange={(e) => setFiltroProveedor(e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value))}
+            onChange={(e) => { setPagina(0); setFiltroProveedor(e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value)); }}
             className="w-full px-3 py-2 text-sm bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="TODOS">Todos los proveedores</option>
@@ -331,7 +370,7 @@ export const Productos = () => {
           <Button
             variant={filtroStock === 'TODOS' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setFiltroStock('TODOS')}
+            onClick={() => { setPagina(0); setFiltroStock('TODOS'); }}
             className="text-xs"
           >
             Todos
@@ -339,7 +378,7 @@ export const Productos = () => {
           <Button
             variant={filtroStock === 'EN_STOCK' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setFiltroStock('EN_STOCK')}
+            onClick={() => { setPagina(0); setFiltroStock('EN_STOCK'); }}
             className="text-xs text-emerald-600 dark:text-emerald-400"
           >
             Normal
@@ -347,7 +386,7 @@ export const Productos = () => {
           <Button
             variant={filtroStock === 'POCO_STOCK' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setFiltroStock('POCO_STOCK')}
+            onClick={() => { setPagina(0); setFiltroStock('POCO_STOCK'); }}
             className="text-xs text-amber-600 dark:text-amber-400"
           >
             Poco Stock
@@ -355,7 +394,7 @@ export const Productos = () => {
           <Button
             variant={filtroStock === 'AGOTADO' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setFiltroStock('AGOTADO')}
+            onClick={() => { setPagina(0); setFiltroStock('AGOTADO'); }}
             className="text-xs text-destructive"
           >
             Agotados
@@ -378,6 +417,7 @@ export const Productos = () => {
                 setFiltroMarca('TODAS');
                 setFiltroProveedor('TODOS');
                 setFiltroStock('TODOS');
+                setPagina(0);
               }}
               className="mt-2 text-accent"
             >
@@ -479,6 +519,15 @@ export const Productos = () => {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>{totalProductos === 0 ? 'Sin productos' : `Mostrando ${pagina * 20 + 1}–${Math.min((pagina + 1) * 20, totalProductos)} de ${totalProductos} productos`}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={pagina === 0 || loading} onClick={() => setPagina((actual) => Math.max(0, actual - 1))}>Anterior</Button>
+          <span>Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}</span>
+          <Button variant="outline" size="sm" disabled={pagina + 1 >= totalPaginas || loading} onClick={() => setPagina((actual) => actual + 1)}>Siguiente</Button>
+        </div>
       </div>
 
       {/* Modal Dialog con validaciones integradas */}

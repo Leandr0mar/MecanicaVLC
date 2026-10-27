@@ -4,12 +4,15 @@ import com.example.dashboarvlc.models.Cita;
 import com.example.dashboarvlc.models.enums.EstadoCita;
 import com.example.dashboarvlc.dto.RegistroPagoCitaRequest;
 import com.example.dashboarvlc.services.CitaService;
+import com.example.dashboarvlc.repositories.CitaRepository;
+import com.example.dashboarvlc.dto.PaginaRespuesta;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.data.domain.PageRequest;
 import java.security.Principal;
 
 import java.time.LocalDate;
@@ -23,6 +26,20 @@ import java.util.Map;
 public class CitaRestController {
 
     private final CitaService citaService;
+    private final CitaRepository citaRepository;
+
+    @GetMapping("/pagina")
+    public ResponseEntity<PaginaRespuesta<Cita>> listarPagina(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano,
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "") String estado) {
+        int paginaSegura = Math.max(0, pagina);
+        int tamanoSeguro = Math.max(1, Math.min(tamano, 100));
+        return ResponseEntity.ok(PaginaRespuesta.desde(citaRepository.buscarPagina(
+                q.trim(), estado.trim(), PageRequest.of(paginaSegura, tamanoSeguro,
+                        org.springframework.data.domain.Sort.unsorted()))));
+    }
 
     @GetMapping
     public ResponseEntity<List<Cita>> listarTodas() {
@@ -101,10 +118,7 @@ public class CitaRestController {
     @GetMapping("/mis-tareas")
     public ResponseEntity<List<Cita>> listarMisTareas(java.security.Principal principal) {
         if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        // Filtramos todas las citas para quedarnos solo con las de este trabajador
-        List<Cita> tareas = citaService.listarTodas().stream()
-                .filter(c -> c.getTrabajador() != null && c.getTrabajador().getEmail().equals(principal.getName()))
-                .toList();
+        List<Cita> tareas = citaRepository.findByTrabajador_EmailOrderByFechaAscHoraAsc(principal.getName());
         return ResponseEntity.ok(tareas);
     }
 

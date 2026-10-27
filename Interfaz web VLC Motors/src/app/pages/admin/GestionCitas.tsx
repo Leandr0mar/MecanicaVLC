@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
 // Se añadió el icono Download
@@ -10,7 +10,7 @@ import { API_URL } from '../../context/AuthContext';
 // Importamos la librería para Excel
 import * as XLSX from 'xlsx';
 import { ConfirmDeleteDialog } from '../../components/ui/ConfirmDeleteDialog';
-import { AdminSearchInput, matchesAdminSearch } from '../../components/ui/AdminSearchInput';
+import { AdminSearchInput } from '../../components/ui/AdminSearchInput';
 
 interface Cita {
   idCita: number;
@@ -34,6 +34,10 @@ export const GestionCitas = () => {
   
   const [filtroEstado, setFiltroEstado] = useState<string | 'TODAS'>('TODAS');
   const [busqueda, setBusqueda] = useState('');
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalCitas, setTotalCitas] = useState(0);
+  const busquedaInicial = useRef(true);
   
   // Estados para el Modal
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -44,23 +48,37 @@ export const GestionCitas = () => {
   const [montoPago, setMontoPago] = useState('');
   const [metodoPago, setMetodoPago] = useState('EFECTIVO');
 
+  useEffect(() => { cargarDatos(); }, [pagina, filtroEstado]);
+
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    if (busquedaInicial.current) { busquedaInicial.current = false; return; }
+    const temporizador = window.setTimeout(() => {
+      if (pagina !== 0) setPagina(0);
+      else cargarDatos();
+    }, busqueda ? 300 : 0);
+    return () => window.clearTimeout(temporizador);
+  }, [busqueda]);
 
   const cargarDatos = async () => {
     try {
-      setLoading(true);
+      if (!citas.length) setLoading(true);
       
+      const parametros = new URLSearchParams({ pagina: String(pagina), tamano: '20', q: busqueda.trim() });
+      if (filtroEstado !== 'TODAS') parametros.set('estado', filtroEstado);
       const [resCitas, resUsuarios] = await Promise.all([
-        fetch(`${API_URL}/api/citas`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/usuarios`, { credentials: 'include' })
+        fetch(`${API_URL}/api/citas/pagina?${parametros}`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/usuarios/pagina?pagina=0&tamano=100&rol=2`, { credentials: 'include' })
       ]);
 
       if (resCitas.status === 401) return (window.location.href = '/iniciar-sesion');
       
       if (resCitas.ok) {
-        const dataCitas = await resCitas.json();
+        const paginaRespuesta = await resCitas.json();
+        if (pagina > 0 && pagina >= (paginaRespuesta.totalPaginas ?? 0)) {
+          setPagina(Math.max(0, (paginaRespuesta.totalPaginas ?? 0) - 1));
+          return;
+        }
+        const dataCitas = paginaRespuesta.contenido ?? [];
         const prioridad = (cita: Cita) => {
           const estado = cita.estado?.toUpperCase();
           if (estado === 'PENDIENTE') return 0;
@@ -78,11 +96,13 @@ export const GestionCitas = () => {
           return prioridad(a) <= 1 ? fechaA - fechaB : fechaB - fechaA;
         });
         setCitas(ordenadas);
+        setTotalPaginas(paginaRespuesta.totalPaginas ?? 0);
+        setTotalCitas(paginaRespuesta.totalElementos ?? 0);
       }
 
       if (resUsuarios.ok) {
         const dataUsuarios = await resUsuarios.json();
-        setTrabajadores(dataUsuarios.filter((u: any) => u.rol === 2));
+        setTrabajadores(dataUsuarios.contenido ?? []);
       }
 
     } catch (error) {
@@ -191,17 +211,28 @@ export const GestionCitas = () => {
     }
   };
 
-  const citasFiltradas = citas.filter(cita =>
-    (filtroEstado === 'TODAS' || cita.estado === filtroEstado) && matchesAdminSearch(cita, busqueda)
-  );
+  const citasFiltradas = citas;
 
   // --- NUEVA LÓGICA: EXPORTAR A EXCEL ---
-  const exportarExcel = () => {
-    if (citasFiltradas.length === 0) {
+  const exportarExcel = async () => {
+    if (totalCitas === 0) {
       return toast.error('No hay citas para exportar bajo el filtro actual');
     }
 
-    const datosExcel = citasFiltradas.map((cita) => {
+    const params = new URLSearchParams({ pagina: '0', tamano: '100', q: busqueda.trim() });
+    if (filtroEstado !== 'TODAS') params.set('estado', filtroEstado);
+    const inicial = await fetch(`${API_URL}/api/citas/pagina?${params}`, { credentials: 'include' });
+    if (!inicial.ok) return toast.error('No se pudo preparar la exportación de citas');
+    const primeraPagina = await inicial.json();
+    const citasExportar: Cita[] = [...(primeraPagina.contenido ?? [])];
+    for (let numero = 1; numero < (primeraPagina.totalPaginas ?? 0); numero += 1) {
+      params.set('pagina', String(numero));
+      const siguiente = await fetch(`${API_URL}/api/citas/pagina?${params}`, { credentials: 'include' });
+      if (!siguiente.ok) return toast.error('No se pudo completar la exportación de citas');
+      citasExportar.push(...((await siguiente.json()).contenido ?? []));
+    }
+
+    const datosExcel = citasExportar.map((cita) => {
       return {
         'ID Cita': cita.idCita,
         'Fecha': new Date(cita.fecha + 'T00:00:00').toLocaleDateString('es-ES'),
@@ -258,11 +289,11 @@ export const GestionCitas = () => {
           </Button>
 
           <div className="flex bg-card border border-border p-1 rounded-lg overflow-x-auto">
-            <Button variant={filtroEstado === 'TODAS' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('TODAS')} className="text-xs">Todas</Button>
-            <Button variant={filtroEstado === 'PENDIENTE' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('PENDIENTE')} className="text-xs text-yellow-600 dark:text-yellow-400">Pendientes</Button>
-            <Button variant={filtroEstado === 'EN_PROGRESO' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('EN_PROGRESO')} className="text-xs text-blue-600 dark:text-blue-400">En Progreso</Button>
-            <Button variant={filtroEstado === 'COMPLETADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('COMPLETADA')} className="text-xs text-green-600 dark:text-green-400">Completadas</Button>
-            <Button variant={filtroEstado === 'CANCELADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFiltroEstado('CANCELADA')} className="text-xs text-red-600 dark:text-red-400">Canceladas</Button>
+            <Button variant={filtroEstado === 'TODAS' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('TODAS'); }} className="text-xs">Todas</Button>
+            <Button variant={filtroEstado === 'PENDIENTE' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('PENDIENTE'); }} className="text-xs text-yellow-600 dark:text-yellow-400">Pendientes</Button>
+            <Button variant={filtroEstado === 'EN_PROGRESO' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('EN_PROGRESO'); }} className="text-xs text-blue-600 dark:text-blue-400">En Progreso</Button>
+            <Button variant={filtroEstado === 'COMPLETADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('COMPLETADA'); }} className="text-xs text-green-600 dark:text-green-400">Completadas</Button>
+            <Button variant={filtroEstado === 'CANCELADA' ? 'secondary' : 'ghost'} size="sm" onClick={() => { setPagina(0); setFiltroEstado('CANCELADA'); }} className="text-xs text-red-600 dark:text-red-400">Canceladas</Button>
           </div>
         </div>
       </div>
@@ -364,6 +395,15 @@ export const GestionCitas = () => {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>{totalCitas === 0 ? 'Sin citas' : `Mostrando ${pagina * 20 + 1}–${Math.min((pagina + 1) * 20, totalCitas)} de ${totalCitas} citas`}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={pagina === 0 || loading} onClick={() => setPagina((actual) => Math.max(0, actual - 1))}>Anterior</Button>
+          <span>Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}</span>
+          <Button variant="outline" size="sm" disabled={pagina + 1 >= totalPaginas || loading} onClick={() => setPagina((actual) => actual + 1)}>Siguiente</Button>
+        </div>
       </div>
 
       <Dialog.Root open={Boolean(citaPago)} onOpenChange={(open) => !open && setCitaPago(null)}>
