@@ -25,6 +25,8 @@ interface Pedido {
   items: ItemPedido[];
 }
 
+const TAMANO_PAGINA = 10;
+
 export const GestionPedidos = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +57,7 @@ export const GestionPedidos = () => {
   const cargarDatos = async () => {
     try {
       if (!pedidos.length) setLoading(true);
-      const params = new URLSearchParams({ pagina: String(pagina), tamano: '20', q: busqueda.trim() });
+      const params = new URLSearchParams({ pagina: String(pagina), tamano: String(TAMANO_PAGINA), q: busqueda.trim() });
       if (filtroEstado !== 'TODOS') params.set('estado', filtroEstado);
       const res = await fetch(`${API_URL}/api/ordenes/pagina?${params}`, { credentials: 'include' });
 
@@ -273,7 +275,7 @@ export const GestionPedidos = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>{totalPedidos === 0 ? 'Sin pedidos' : `Mostrando ${pagina * 20 + 1}–${Math.min((pagina + 1) * 20, totalPedidos)} de ${totalPedidos} pedidos`}</span>
+        <span>{totalPedidos === 0 ? 'Sin pedidos' : `Mostrando ${pagina * TAMANO_PAGINA + 1}–${Math.min((pagina + 1) * TAMANO_PAGINA, totalPedidos)} de ${totalPedidos} pedidos`}</span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={pagina === 0 || loading} onClick={() => setPagina((actual) => Math.max(0, actual - 1))}>Anterior</Button>
           <span>Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}</span>

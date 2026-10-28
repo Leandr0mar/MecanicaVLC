@@ -6,6 +6,8 @@ import com.example.dashboarvlc.dto.RegistroPagoCitaRequest;
 import com.example.dashboarvlc.services.CitaService;
 import com.example.dashboarvlc.repositories.CitaRepository;
 import com.example.dashboarvlc.dto.PaginaRespuesta;
+import com.example.dashboarvlc.dto.CitaListaDTO;
+import com.example.dashboarvlc.dto.CitaTrabajadorDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,16 +31,27 @@ public class CitaRestController {
     private final CitaRepository citaRepository;
 
     @GetMapping("/pagina")
-    public ResponseEntity<PaginaRespuesta<Cita>> listarPagina(
+    public ResponseEntity<PaginaRespuesta<CitaListaDTO>> listarPagina(
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamano,
             @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "") String estado) {
         int paginaSegura = Math.max(0, pagina);
         int tamanoSeguro = Math.max(1, Math.min(tamano, 100));
-        return ResponseEntity.ok(PaginaRespuesta.desde(citaRepository.buscarPagina(
+        var paginaCitas = citaRepository.buscarPaginaResumen(
                 q.trim(), estado.trim(), PageRequest.of(paginaSegura, tamanoSeguro,
-                        org.springframework.data.domain.Sort.unsorted()))));
+                        org.springframework.data.domain.Sort.unsorted()));
+        var contenido = paginaCitas.getContent().stream()
+                .map(cita -> new CitaListaDTO(
+                        cita.idCita(), cita.fecha(), cita.hora(), cita.estado(), cita.montoInicial(),
+                        cita.pagoRegistrado(), cita.montoPagado(), cita.metodoPago(), cita.fechaPago(),
+                        new CitaListaDTO.Cliente(cita.nombreCliente(), cita.apellidoCliente(), cita.telefonoCliente()),
+                        cita.idTrabajador() == null ? null : new CitaListaDTO.Trabajador(
+                                cita.idTrabajador(), cita.nombreTrabajador(), cita.apellidoTrabajador()),
+                        new CitaListaDTO.Servicio(cita.nombreServicio())))
+                .toList();
+        return ResponseEntity.ok(new PaginaRespuesta<>(contenido, paginaCitas.getNumber(),
+                paginaCitas.getSize(), paginaCitas.getTotalElements(), paginaCitas.getTotalPages()));
     }
 
     @GetMapping
@@ -116,9 +129,18 @@ public class CitaRestController {
 
     // NUEVO: Devuelve solo las citas asignadas al TRABAJADOR logueado
     @GetMapping("/mis-tareas")
-    public ResponseEntity<List<Cita>> listarMisTareas(java.security.Principal principal) {
+    public ResponseEntity<List<CitaTrabajadorDTO>> listarMisTareas(java.security.Principal principal) {
         if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        List<Cita> tareas = citaRepository.findByTrabajador_EmailOrderByFechaAscHoraAsc(principal.getName());
+        LocalDate hoy = LocalDate.now();
+        List<CitaTrabajadorDTO> tareas = citaRepository.buscarAgendaSemanalTrabajador(
+                        principal.getName(), hoy, hoy.plusDays(7)).stream()
+                .map(cita -> new CitaTrabajadorDTO(
+                        cita.idCita(), cita.fecha(), cita.hora(), cita.estado(), cita.observaciones(),
+                        cita.montoInicial(), cita.montoPagado(), cita.metodoPago(), cita.pagoRegistrado(),
+                        new CitaTrabajadorDTO.Cliente(cita.nombreCliente(), cita.apellidoCliente(),
+                                cita.telefonoCliente(), cita.emailCliente(), cita.placaMototaxi()),
+                        new CitaTrabajadorDTO.Servicio(cita.nombreServicio())))
+                .toList();
         return ResponseEntity.ok(tareas);
     }
 

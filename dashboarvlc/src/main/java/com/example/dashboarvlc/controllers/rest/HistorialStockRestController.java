@@ -4,6 +4,7 @@ import com.example.dashboarvlc.models.HistorialStock;
 import com.example.dashboarvlc.services.HistorialStockService;
 import com.example.dashboarvlc.repositories.HistorialStockRepository;
 import com.example.dashboarvlc.dto.PaginaRespuesta;
+import com.example.dashboarvlc.dto.HistorialStockListaDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,15 +26,24 @@ public class HistorialStockRestController {
     private final HistorialStockRepository historialStockRepository;
 
     @GetMapping("/pagina")
-    public ResponseEntity<PaginaRespuesta<HistorialStock>> listarPagina(
+    public ResponseEntity<PaginaRespuesta<HistorialStockListaDTO>> listarPagina(
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamano,
             @RequestParam(defaultValue = "") String q) {
         int paginaSegura = Math.max(0, pagina);
         int tamanoSeguro = Math.max(1, Math.min(tamano, 100));
-        return ResponseEntity.ok(PaginaRespuesta.desde(historialStockRepository.buscarPagina(
+        var paginaMovimientos = historialStockRepository.buscarPaginaResumen(
                 q.trim(), PageRequest.of(paginaSegura, tamanoSeguro,
-                        Sort.by(Sort.Direction.DESC, "fechaMovimiento")))));
+                        Sort.by(Sort.Direction.DESC, "fechaMovimiento")));
+        var contenido = paginaMovimientos.getContent().stream()
+                .map(movimiento -> new HistorialStockListaDTO(
+                        movimiento.idHistorialStock(), movimiento.cantidad(), movimiento.tipoMovimiento(),
+                        movimiento.fechaMovimiento(), movimiento.descripcion(),
+                        movimiento.nombreProducto() == null ? null :
+                                new HistorialStockListaDTO.Producto(movimiento.nombreProducto())))
+                .toList();
+        return ResponseEntity.ok(new PaginaRespuesta<>(contenido, paginaMovimientos.getNumber(),
+                paginaMovimientos.getSize(), paginaMovimientos.getTotalElements(), paginaMovimientos.getTotalPages()));
     }
 
     @GetMapping("/resumen")

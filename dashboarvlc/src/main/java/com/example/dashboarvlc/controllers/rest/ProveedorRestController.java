@@ -1,6 +1,8 @@
 package com.example.dashboarvlc.controllers.rest;
 
 import com.example.dashboarvlc.models.Proveedor;
+import com.example.dashboarvlc.dto.ProveedorListaDTO;
+import com.example.dashboarvlc.repositories.ProveedorRepository;
 import com.example.dashboarvlc.services.ProveedorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +19,11 @@ import java.util.List;
 public class ProveedorRestController {
 
     private final ProveedorService proveedorService;
+    private final ProveedorRepository proveedorRepository;
 
     @GetMapping
-    public ResponseEntity<List<Proveedor>> listarTodos() {
-        return ResponseEntity.ok(proveedorService.listarTodos());
+    public ResponseEntity<List<ProveedorListaDTO>> listarTodos() {
+        return ResponseEntity.ok(proveedorRepository.listarResumen());
     }
 
     @GetMapping("/{id}")

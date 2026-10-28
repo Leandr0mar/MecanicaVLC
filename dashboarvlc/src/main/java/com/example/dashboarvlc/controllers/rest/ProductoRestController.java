@@ -4,6 +4,8 @@ import com.example.dashboarvlc.models.Producto;
 import com.example.dashboarvlc.services.ProductoService;
 import com.example.dashboarvlc.repositories.ProductoRepository;
 import com.example.dashboarvlc.dto.PaginaRespuesta;
+import com.example.dashboarvlc.dto.ProductoCatalogoDTO;
+import com.example.dashboarvlc.dto.ProductoCatalogoFilaDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,7 +16,7 @@ import org.springframework.data.domain.Sort;
 
 import java.util.List;
 import java.util.Map;
-import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -44,6 +46,34 @@ public class ProductoRestController {
     @GetMapping("/marcas")
     public ResponseEntity<List<String>> listarMarcas() {
         return ResponseEntity.ok(productoRepository.listarMarcas());
+    }
+
+    @GetMapping("/catalogo")
+    public ResponseEntity<List<ProductoCatalogoDTO>> listarCatalogoCliente() {
+        LocalDate hoy = LocalDate.now();
+        List<ProductoCatalogoDTO> productos = productoRepository.listarCatalogoCliente().stream()
+                .map(producto -> mapearCatalogo(producto, hoy))
+                .toList();
+        return ResponseEntity.ok(productos);
+    }
+
+    private ProductoCatalogoDTO mapearCatalogo(ProductoCatalogoFilaDTO producto, LocalDate hoy) {
+        double precioVenta = producto.precioVenta() == null ? 0 : producto.precioVenta();
+        boolean ofertaActiva = producto.descuento() != null
+                && producto.fechaInicioOferta() != null
+                && producto.fechaFinOferta() != null
+                && !hoy.isBefore(producto.fechaInicioOferta())
+                && !hoy.isAfter(producto.fechaFinOferta());
+        double precioFinal = ofertaActiva
+                ? Math.round(precioVenta * (1 - producto.descuento() / 100.0) * 100.0) / 100.0
+                : precioVenta;
+
+        return new ProductoCatalogoDTO(
+                producto.idProducto(), producto.nombre(), producto.codigoProducto(), producto.marca(),
+                precioVenta, precioFinal, producto.stock(), producto.imagenUrl(),
+                producto.idCategoria() == null ? null : new ProductoCatalogoDTO.Categoria(producto.idCategoria()),
+                producto.idProveedor() == null ? null : new ProductoCatalogoDTO.Proveedor(producto.idProveedor()),
+                producto.descuento() == null ? null : new ProductoCatalogoDTO.Oferta(producto.descuento()));
     }
 
     @GetMapping

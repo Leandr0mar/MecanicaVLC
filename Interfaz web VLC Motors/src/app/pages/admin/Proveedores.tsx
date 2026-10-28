@@ -15,7 +15,7 @@ interface Proveedor {
   ruc: string;
   nombreProveedor: string;
   telefono: string;
-  productos?: any[];
+  cantidadProductos: number;
 }
 
 interface ProveedorFormData {
@@ -217,7 +217,7 @@ export const Proveedores = () => {
                   <p className="text-xs text-muted-foreground mb-2">Productos suministrados:</p>
                   <div className="flex flex-wrap gap-1">
                     <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                      {proveedor.productos ? proveedor.productos.length : 0} productos asociados
+                      {proveedor.cantidadProductos ?? 0} productos asociados
                     </span>
                   </div>
                 </div>

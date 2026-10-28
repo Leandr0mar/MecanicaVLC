@@ -12,8 +12,22 @@ interface CartItem {
   cantidad: number;
 }
 
+interface ProductoCatalogo {
+  idProducto: number;
+  nombre: string;
+  codigoProducto: string;
+  marca: string;
+  precioVenta: number;
+  precioFinal: number;
+  stock: number;
+  imagenUrl?: string | null;
+  categoria?: { idCategoria: number } | null;
+  proveedor?: { idProveedor: number } | null;
+  oferta?: { descuento: number } | null;
+}
+
 export const ReservarProductos = () => {
-  const [productos, setProductos] = useState<any[]>([]);
+  const [productos, setProductos] = useState<ProductoCatalogo[]>([]);
   const [carrito, setCarrito] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +49,7 @@ export const ReservarProductos = () => {
     try {
       setLoading(true);
       const [resProd, resCat, resProv] = await Promise.all([
-        fetch(`${API_URL}/api/productos`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/productos/catalogo`, { credentials: 'include' }),
         fetch(`${API_URL}/api/categorias`, { credentials: 'include' }),
         fetch(`${API_URL}/api/proveedores`, { credentials: 'include' })
       ]);
@@ -242,7 +256,7 @@ export const ReservarProductos = () => {
                       <Button
                         variant="primary"
                         size="sm"
-                        className="w-full mt-2"
+                        className="w-full mt-2 hover:bg-accent hover:text-accent-foreground hover:shadow-md"
                         onClick={() => agregarAlCarrito(producto.idProducto)}
                         disabled={producto.stock === 0}
                       >

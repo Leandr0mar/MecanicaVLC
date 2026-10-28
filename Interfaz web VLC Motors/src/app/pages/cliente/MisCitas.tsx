@@ -47,9 +47,9 @@ export const MisCitas = () => {
   const [boletaCita, setBoletaCita] = useState<Cita | null>(null);
 
   const calcularImportes = (cita: Cita) => {
-    const total = Number(cita.montoPagado ?? 0);
-    const base = total / 1.18;
-    return { total, base, igv: total - base };
+    const total = Math.round(Number(cita.montoPagado ?? 0) * 100) / 100;
+    const base = Math.round((total / 1.18) * 100) / 100;
+    return { total, base, igv: Math.round((total - base) * 100) / 100 };
   };
 
   const escaparHTML = (valor: string) => valor.replace(/[&<>"']/g, (caracter) => ({
@@ -81,14 +81,13 @@ export const MisCitas = () => {
         p{margin:5px 0;font-size:13px;color:#475569}.number{text-align:right;font-weight:bold;color:#9a7620}.number strong{display:block;font-size:20px;margin-top:6px}
         table{width:100%;border-collapse:collapse;font-size:13px}td{padding:9px 4px;border-bottom:1px solid #e5e7eb}td:first-child{color:#64748b;width:38%}
         .amounts{width:320px;margin:20px 0 0 auto}.amounts td{padding:8px 4px}.amounts tr:last-child{font-size:17px;font-weight:bold;color:#172033}
-        .notice{margin-top:30px;padding:12px;background:#fffbeb;border:1px solid #f3df9c;border-radius:8px;font-size:11px;color:#765b12;line-height:1.5}
         @media print{body{background:white;padding:0}.receipt{border:0;border-radius:0;max-width:none;padding:20px}}
       </style></head><body><main class="receipt">
-      <header><div><h1>Boleta electrónica · Demo</h1><p>VLC Motors · RUC: 20123456789</p><p>Av. Ejemplo 123, Lima, Perú</p><p>Fecha de emisión: ${escaparHTML(fechaEmision)}</p></div>
+      <header><div><h1>Boleta de venta electrónica</h1><p>VLC Motors · RUC: 20123456789</p><p>Fecha de emisión: ${escaparHTML(fechaEmision)}</p></div>
       <div class="number">N.º BOLETA<strong>${escaparHTML(numeroBoleta)}</strong></div></header>
-      <h2>Datos del cliente</h2><table>${fila('Cliente', nombreCliente)}${fila('Documento', `${cliente?.tipoDocumento || (cliente?.dni ? 'DNI' : 'Documento')}: ${documento}`)}${fila('Teléfono', cliente?.telefono || '')}${fila('Correo', cliente?.email || '')}${fila('Dirección', cliente?.direccion || '')}</table>
-      <h2>Detalle del servicio</h2><table>${fila('Servicio', cita.servicio?.nombreServicio || 'Servicio no especificado')}${fila('Fecha de atención', fechaCita)}${fila('Hora', cita.hora.substring(0, 5))}${fila('Trabajador', cita.trabajador ? `${cita.trabajador.nombre} ${cita.trabajador.apellido}` : 'No asignado')}${fila('Vehículo', [cliente?.marcaMototaxi, cliente?.modeloMototaxi].filter(Boolean).join(' ') || '')}${fila('Placa', cliente?.placaMototaxi || '')}${fila('Observaciones', cita.observaciones || '')}</table>
-      <h2>Pago presencial</h2><table>${fila('Fecha de pago', fechaEmision)}${fila('Método de pago', cita.metodoPago?.replace('_', ' ').toLowerCase() || '')}</table>
+      <h2>Cliente</h2><table>${fila('Nombre', nombreCliente)}${fila('Documento', `${cliente?.tipoDocumento || (cliente?.dni ? 'DNI' : 'Documento')}: ${documento}`)}</table>
+      <h2>Detalle</h2><table>${fila('Servicio', cita.servicio?.nombreServicio || 'Servicio no especificado')}${fila('Fecha de atención', fechaCita)}</table>
+      <h2>Pago</h2><table>${fila('Fecha de pago', fechaEmision)}${fila('Medio de pago', cita.metodoPago?.replace('_', ' ').toLowerCase() || '')}</table>
       <table class="amounts"><tr><td>Valor de venta</td><td>${formatCurrency(base)}</td></tr><tr><td>IGV (18%, incluido)</td><td>${formatCurrency(igv)}</td></tr><tr><td>Total pagado</td><td>${formatCurrency(total)}</td></tr></table>
       </main><script>window.onload=()=>{window.focus();window.print()}</script></body></html>`);
     ventana.document.close();
@@ -315,7 +314,7 @@ export const MisCitas = () => {
             return <>
               <div className="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
                 <div>
-                  <Dialog.Title className="text-xl font-bold text-card-foreground">Boleta electrónica · Demo</Dialog.Title>
+                  <Dialog.Title className="text-xl font-bold text-card-foreground">Boleta de venta electrónica</Dialog.Title>
                   <Dialog.Description className="mt-1 text-sm text-muted-foreground">VLC Motors · RUC: 20123456789 · Boleta N.º {numeroBoleta}</Dialog.Description>
                   <p className="mt-1 text-xs text-muted-foreground">Av. Ejemplo 123, Lima, Perú</p>
                 </div>

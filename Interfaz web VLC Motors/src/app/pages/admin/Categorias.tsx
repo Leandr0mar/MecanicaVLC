@@ -13,7 +13,7 @@ interface Categoria {
   idCategoria: number;
   nombreCategoria: string;
   descripcion: string;
-  productos?: any[];
+  cantidadProductos: number;
 }
 
 interface CategoriaFormData {
@@ -199,7 +199,7 @@ export const Categorias = () => {
                   </td>
                   <td className="p-4">
                     <span className="px-3 py-1 bg-accent/15 text-accent rounded-full text-xs font-medium">
-                      {categoria.productos ? categoria.productos.length : 0} productos
+                      {categoria.cantidadProductos ?? 0} productos
                     </span>
                   </td>
                   <td className="p-4">

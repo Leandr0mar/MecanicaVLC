@@ -9,8 +9,16 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 import com.example.dashboarvlc.models.Producto;
+import com.example.dashboarvlc.dto.ProductoCatalogoFilaDTO;
 
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
+    @Query("select new com.example.dashboarvlc.dto.ProductoCatalogoFilaDTO(" +
+            "p.idProducto, p.nombre, p.codigoProducto, p.marca, p.precioVenta, p.stock, p.imagenUrl, " +
+            "c.idCategoria, pr.idProveedor, o.descuento, o.fechaInicio, o.fechaFin) " +
+            "from Producto p left join p.categoria c left join p.proveedor pr left join p.oferta o " +
+            "order by p.nombre")
+    List<ProductoCatalogoFilaDTO> listarCatalogoCliente();
+
     @EntityGraph(attributePaths = {"categoria", "proveedor", "oferta"})
     @Query(value = "select p from Producto p left join p.categoria c left join p.proveedor pr " +
             "where (:q = '' or lower(concat(coalesce(p.nombre,''),' ',coalesce(p.codigoProducto,''),' ',coalesce(p.marca,''),' ',coalesce(c.nombreCategoria,''),' ',coalesce(pr.nombreProveedor,''))) like lower(concat('%',:q,'%'))) " +

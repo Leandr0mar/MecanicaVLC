@@ -10,8 +10,25 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 import com.example.dashboarvlc.models.Cita;
+import com.example.dashboarvlc.dto.CitaListaFilaDTO;
+import com.example.dashboarvlc.dto.CitaTrabajadorFilaDTO;
 
 public interface CitaRepository extends JpaRepository<Cita, Long> {
+    @Query(value = "select new com.example.dashboarvlc.dto.CitaListaFilaDTO(" +
+            "c.idCita, c.fecha, c.hora, c.estado, c.montoInicial, c.pagoRegistrado, c.montoPagado, c.metodoPago, c.fechaPago, " +
+            "cl.nombre, cl.apellido, cl.telefono, t.idUsuario, t.nombre, t.apellido, s.nombreServicio) " +
+            "from Cita c join c.cliente cl left join c.trabajador t join c.servicio s " +
+            "where (:q = '' or lower(concat(cast(c.idCita as string),' ',cast(c.fecha as string),' ',cast(c.hora as string),' ',coalesce(cl.nombre,''),' ',coalesce(cl.apellido,''),' ',coalesce(cl.email,''),' ',coalesce(cl.telefono,''),' ',coalesce(t.nombre,''),' ',coalesce(t.apellido,''),' ',coalesce(s.nombreServicio,''),' ',cast(c.estado as string),' ',coalesce(c.observaciones,''))) like lower(concat('%',:q,'%'))) " +
+            "and (:estado = '' or cast(c.estado as string) = :estado) " +
+            "order by case when c.estado = com.example.dashboarvlc.models.enums.EstadoCita.PENDIENTE then 0 " +
+            "when c.estado = com.example.dashboarvlc.models.enums.EstadoCita.EN_PROGRESO then 1 " +
+            "when c.estado = com.example.dashboarvlc.models.enums.EstadoCita.COMPLETADA and (c.pagoRegistrado = false or c.pagoRegistrado is null) then 2 " +
+            "when c.estado = com.example.dashboarvlc.models.enums.EstadoCita.COMPLETADA then 3 else 4 end, c.fecha desc, c.hora desc",
+            countQuery = "select count(c) from Cita c join c.cliente cl left join c.trabajador t join c.servicio s " +
+                    "where (:q = '' or lower(concat(cast(c.idCita as string),' ',cast(c.fecha as string),' ',cast(c.hora as string),' ',coalesce(cl.nombre,''),' ',coalesce(cl.apellido,''),' ',coalesce(cl.email,''),' ',coalesce(cl.telefono,''),' ',coalesce(t.nombre,''),' ',coalesce(t.apellido,''),' ',coalesce(s.nombreServicio,''),' ',cast(c.estado as string),' ',coalesce(c.observaciones,''))) like lower(concat('%',:q,'%'))) " +
+                    "and (:estado = '' or cast(c.estado as string) = :estado)")
+    Page<CitaListaFilaDTO> buscarPaginaResumen(@Param("q") String q, @Param("estado") String estado, Pageable pageable);
+
     @EntityGraph(attributePaths = {"cliente", "trabajador", "servicio"})
     @Query(value = "select c from Cita c left join c.cliente cl left join c.trabajador tr left join c.servicio s " +
             "where (:q = '' or lower(concat(cast(c.idCita as string),' ',cast(c.fecha as string),' ',cast(c.hora as string),' ',coalesce(cl.nombre,''),' ',coalesce(cl.apellido,''),' ',coalesce(cl.email,''),' ',coalesce(cl.telefono,''),' ',coalesce(tr.nombre,''),' ',coalesce(tr.apellido,''),' ',coalesce(s.nombreServicio,''),' ',cast(c.estado as string),' ',coalesce(c.observaciones,''))) like lower(concat('%',:q,'%'))) " +
@@ -27,6 +44,18 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
 
     @EntityGraph(attributePaths = {"cliente", "trabajador", "servicio"})
     List<Cita> findByTrabajador_EmailOrderByFechaAscHoraAsc(String email);
+
+    @Query("select new com.example.dashboarvlc.dto.CitaTrabajadorFilaDTO(" +
+            "c.idCita, c.fecha, c.hora, c.estado, c.observaciones, c.montoInicial, c.montoPagado, " +
+            "c.metodoPago, c.pagoRegistrado, cl.nombre, cl.apellido, cl.telefono, cl.email, " +
+            "cl.placaMototaxi, s.nombreServicio) " +
+            "from Cita c join c.trabajador t join c.cliente cl join c.servicio s " +
+            "where t.email = :email and c.fecha between :inicio and :fin " +
+            "order by c.fecha asc, c.hora asc")
+    List<CitaTrabajadorFilaDTO> buscarAgendaSemanalTrabajador(
+            @Param("email") String email,
+            @Param("inicio") LocalDate inicio,
+            @Param("fin") LocalDate fin);
     // NUEVO: Buscar cruces de horarios
     List<Cita> findByFecha(LocalDate fecha);
     List<Cita> findByFechaAndHora(LocalDate fecha, LocalTime hora);
