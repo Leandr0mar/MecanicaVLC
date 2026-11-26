@@ -15,7 +15,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 
 public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Long> {
     @Query(value = "select new com.example.dashboarvlc.dto.OrdenCompraListaFilaDTO(" +
-            "o.idReserva, o.fechaReserva, o.montoTotal, o.estadoRecojo, c.nombre, c.apellido, c.telefono) " +
+            "o.idReserva, o.fechaReserva, o.montoTotal, o.estadoRecojo, o.pagoRegistrado, o.montoPagado, o.metodoPago, o.fechaPago, c.nombre, c.apellido, c.telefono) " +
             "from OrdenCompra o left join o.cliente c " +
             "where (:q = '' or lower(concat(cast(o.idReserva as string),' ',cast(o.fechaReserva as string),' ',coalesce(c.nombre,''),' ',coalesce(c.apellido,''),' ',coalesce(c.email,''),' ',coalesce(c.telefono,''),' ',cast(o.estadoRecojo as string))) like lower(concat('%',:q,'%')) " +
             "or exists (select i.idItemComprado from ItemsComprados i where i.ordenCompra = o and lower(coalesce(i.producto.nombre,'')) like lower(concat('%',:q,'%')))) " +

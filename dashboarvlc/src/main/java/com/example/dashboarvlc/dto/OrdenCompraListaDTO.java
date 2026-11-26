@@ -1,6 +1,7 @@
 package com.example.dashboarvlc.dto;
 
 import com.example.dashboarvlc.models.enums.EstadoRecojo;
+import com.example.dashboarvlc.models.enums.MetodoPago;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -10,6 +11,10 @@ public record OrdenCompraListaDTO(
         LocalDate fechaReserva,
         Double montoTotal,
         EstadoRecojo estadoRecojo,
+        Boolean pagoRegistrado,
+        Double montoPagado,
+        MetodoPago metodoPago,
+        java.time.LocalDateTime fechaPago,
         Cliente cliente,
         List<Item> items) {
 

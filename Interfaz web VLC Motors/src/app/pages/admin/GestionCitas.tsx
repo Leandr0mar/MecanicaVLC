@@ -79,21 +79,10 @@ export const GestionCitas = () => {
           return;
         }
         const dataCitas = paginaRespuesta.contenido ?? [];
-        const prioridad = (cita: Cita) => {
-          const estado = cita.estado?.toUpperCase();
-          if (estado === 'PENDIENTE') return 0;
-          if (estado === 'EN_PROGRESO') return 1;
-          if (estado === 'COMPLETADA' && !cita.pagoRegistrado) return 2;
-          if (estado === 'COMPLETADA') return 3;
-          if (estado === 'CANCELADA') return 4;
-          return 5;
-        };
         const ordenadas = dataCitas.sort((a: Cita, b: Cita) => {
-          const diferenciaEstado = prioridad(a) - prioridad(b);
-          if (diferenciaEstado !== 0) return diferenciaEstado;
           const fechaA = new Date(`${a.fecha}T${a.hora}`).getTime();
           const fechaB = new Date(`${b.fecha}T${b.hora}`).getTime();
-          return prioridad(a) <= 1 ? fechaA - fechaB : fechaB - fechaA;
+          return fechaB - fechaA;
         });
         setCitas(ordenadas);
         setTotalPaginas(paginaRespuesta.totalPaginas ?? 0);

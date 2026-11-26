@@ -10,24 +10,35 @@ import { API_URL } from '../../context/AuthContext';
 export const Pedidos = () => {
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalPedidos, setTotalPedidos] = useState(0);
+  const tamanoPagina = 10;
 
   useEffect(() => {
     cargarPedidos();
-  }, []);
+  }, [pagina]);
 
   const cargarPedidos = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/api/ordenes`, { credentials: 'include' });
+      const parametros = new URLSearchParams({ pagina: String(pagina), tamano: String(tamanoPagina) });
+      const res = await fetch(`${API_URL}/api/ordenes/pagina?${parametros}`, { credentials: 'include' });
       if (res.status === 401) return (window.location.href = '/iniciar-sesion');
       if (!res.ok) throw new Error('Error al cargar la información');
       
-      const data = await res.json();
+      const resultado = await res.json();
+      if (pagina > 0 && pagina >= (resultado.totalPaginas ?? 0)) {
+        setPagina(Math.max(0, (resultado.totalPaginas ?? 0) - 1));
+        return;
+      }
       const prioridad = (estado: string) => ({ PENDIENTE: 0, RECOGIDO: 1, CANCELADO: 2 }[estado?.toUpperCase()] ?? 3);
-      const ordenados = data.sort((a: any, b: any) =>
+      const ordenados = [...(resultado.contenido ?? [])].sort((a: any, b: any) =>
         prioridad(a.estadoRecojo) - prioridad(b.estadoRecojo) || b.idReserva - a.idReserva
       );
       setPedidos(ordenados);
+      setTotalPaginas(resultado.totalPaginas ?? 0);
+      setTotalPedidos(resultado.totalElementos ?? 0);
     } catch (error) {
       toast.error('Error al cargar el historial de pedidos');
     } finally {
@@ -51,7 +62,7 @@ export const Pedidos = () => {
       if (!res.ok) throw new Error('Error al actualizar');
 
       toast.success(nuevoEstado === 'RECOGIDO' ? 'Pedido completado con éxito' : 'Pedido anulado y stock devuelto');
-      await cargarPedidos(); // Recargar la tabla para ver los cambios
+      await cargarPedidos(); // Recargar la página actual para ver los cambios
     } catch (error) {
       toast.error('No se pudo procesar la solicitud');
     }
@@ -84,6 +95,7 @@ export const Pedidos = () => {
           Aún no se han registrado órdenes de compra.
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {pedidos.map((pedido, index) => {
             const ui = getEstadoUI(pedido.estadoRecojo);
@@ -146,23 +158,16 @@ export const Pedidos = () => {
 
                     {/* Botones de Acción Múltiple */}
                     {pedido.estadoRecojo === 'PENDIENTE' && (
-                      <div className="flex gap-2 mt-auto">
+                      <div className="flex flex-col gap-2 mt-auto">
                         <Button
                           variant="secondary"
                           size="sm"
-                          className="flex-1 bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 border border-red-500/20"
+                          className="w-full bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 border border-red-500/20"
                           onClick={() => actualizarEstado(pedido.idReserva, 'CANCELADO')}
                         >
                           Cancelar Compra
                         </Button>
-                        <Button
-                          variant="accent"
-                          size="sm"
-                          className="flex-1 font-bold"
-                          onClick={() => actualizarEstado(pedido.idReserva, 'RECOGIDO')}
-                        >
-                          Marcar Entregado
-                        </Button>
+                        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">La entrega se confirma al registrar el pago presencial en administración.</p>
                       </div>
                     )}
                   </CardContent>
@@ -171,6 +176,15 @@ export const Pedidos = () => {
             );
           })}
         </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>Mostrando {pagina * tamanoPagina + 1}–{Math.min((pagina + 1) * tamanoPagina, totalPedidos)} de {totalPedidos} pedidos</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={pagina === 0 || loading} onClick={() => setPagina((actual) => Math.max(0, actual - 1))}>Anterior</Button>
+            <span>Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}</span>
+            <Button variant="outline" size="sm" disabled={pagina + 1 >= totalPaginas || loading} onClick={() => setPagina((actual) => actual + 1)}>Siguiente</Button>
+          </div>
+        </div>
+        </>
       )}
     </div>
   );

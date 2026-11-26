@@ -9,10 +9,13 @@ import com.example.dashboarvlc.dto.PaginaRespuesta;
 import com.example.dashboarvlc.dto.ItemPedidoListaFilaDTO;
 import com.example.dashboarvlc.dto.OrdenCompraListaDTO;
 import com.example.dashboarvlc.dto.OrdenCompraListaFilaDTO;
+import com.example.dashboarvlc.dto.RegistroPagoPedidoRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.PageRequest;
 
 import java.security.Principal;
@@ -57,6 +60,7 @@ public class OrdenCompraRestController {
         List<OrdenCompraListaDTO> contenido = paginaPedidos.getContent().stream()
                 .map(pedido -> new OrdenCompraListaDTO(
                         pedido.idReserva(), pedido.fechaReserva(), pedido.montoTotal(), pedido.estadoRecojo(),
+                        pedido.pagoRegistrado(), pedido.montoPagado(), pedido.metodoPago(), pedido.fechaPago(),
                         new OrdenCompraListaDTO.Cliente(
                                 pedido.nombreCliente(), pedido.apellidoCliente(), pedido.telefonoCliente()),
                         itemsPorPedido.getOrDefault(pedido.idReserva(), List.of())))
@@ -98,9 +102,21 @@ public class OrdenCompraRestController {
             
             return ResponseEntity.ok(Map.of("mensaje", "Estado del pedido actualizado exitosamente"));
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error interno al procesar el estado"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage() == null ? "No se pudo actualizar el pedido" : e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{id}/pago")
+    public ResponseEntity<?> registrarPago(@PathVariable Long id,
+                                           @Valid @RequestBody RegistroPagoPedidoRequest pago,
+                                           Authentication auth) {
+        try {
+            boolean administrador = auth != null && auth.getAuthorities().stream()
+                    .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+            return ResponseEntity.ok(ordenCompraService.registrarPago(id, pago, administrador));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

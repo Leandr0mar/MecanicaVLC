@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
-import { Calendar, Edit2, Trash2, CheckCircle, XCircle, Filter, Download, Package, User, Clock, FileText } from 'lucide-react';
+import { Calendar, Edit2, CheckCircle, XCircle, Filter, Download, Package, User, Clock, FileText, Banknote, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { formatCurrency } from '../../utils/currency';
@@ -21,6 +21,10 @@ interface Pedido {
   fechaReserva: string;
   montoTotal: number;
   estadoRecojo: string;
+  pagoRegistrado?: boolean;
+  montoPagado?: number;
+  metodoPago?: string;
+  fechaPago?: string;
   cliente: { nombre: string; apellido: string; telefono: string };
   items: ItemPedido[];
 }
@@ -42,6 +46,8 @@ export const GestionPedidos = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState<Pedido | null>(null);
   const [nuevoEstado, setNuevoEstado] = useState<string>('');
+  const [pedidoPago, setPedidoPago] = useState<Pedido | null>(null);
+  const [metodoPago, setMetodoPago] = useState('EFECTIVO');
 
   useEffect(() => { cargarDatos(); }, [pagina, filtroEstado]);
 
@@ -98,6 +104,10 @@ export const GestionPedidos = () => {
       setModalAbierto(false);
       return;
     }
+    if (nuevoEstado === 'RECOGIDO') {
+      toast.error('Confirma la entrega desde el registro de pago presencial');
+      return;
+    }
 
     try {
       const res = await fetch(`${API_URL}/api/ordenes/${pedidoEditando.idReserva}/estado`, {
@@ -110,11 +120,31 @@ export const GestionPedidos = () => {
       if (res.status === 401) return (window.location.href = '/iniciar-sesion');
       if (!res.ok) throw new Error('Error al actualizar el estado');
 
-      toast.success(nuevoEstado === 'RECOGIDO' ? 'Pedido completado con éxito' : 'Estado del pedido actualizado');
+      toast.success('Estado del pedido actualizado');
       await cargarDatos(); 
       setModalAbierto(false);
     } catch (error) {
       toast.error('Ocurrió un error al guardar los cambios del pedido');
+    }
+  };
+
+  const registrarPagoPedido = async () => {
+    if (!pedidoPago) return;
+    try {
+      const res = await fetch(`${API_URL}/api/ordenes/${pedidoPago.idReserva}/pago`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ metodoPago }),
+      });
+      if (res.status === 401) return (window.location.href = '/iniciar-sesion');
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || 'No se pudo registrar el pago');
+      toast.success('Pago registrado y pedido entregado');
+      setPedidoPago(null);
+      await cargarDatos();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo registrar el pago');
     }
   };
 
@@ -261,6 +291,11 @@ export const GestionPedidos = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2 justify-end">
+                        {pedido.estadoRecojo === 'PENDIENTE' && !pedido.pagoRegistrado && (
+                          <button onClick={() => { setPedidoPago(pedido); setMetodoPago('EFECTIVO'); }} className="p-2 rounded-lg text-amber-700 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-500/20 transition-colors" title="Registrar pago presencial" aria-label={`Registrar pago del pedido ${pedido.idReserva}`}>
+                            <Banknote size={16} />
+                          </button>
+                        )}
                         <button onClick={() => abrirModalEdicion(pedido)} className="p-2 hover:bg-muted rounded-lg text-foreground transition-colors" title="Gestionar y ver detalles">
                           <Edit2 size={16} />
                         </button>
@@ -308,6 +343,10 @@ export const GestionPedidos = () => {
                     <span className="text-muted-foreground">Fecha:</span> 
                     <span className="font-medium text-foreground">{new Date(pedidoEditando.fechaReserva + 'T00:00:00').toLocaleDateString('es-ES')}</span>
                   </p>
+                  <p className="mt-2 flex justify-between">
+                    <span className="text-muted-foreground">Pago presencial:</span>
+                    <span className="font-medium text-foreground">{pedidoEditando.pagoRegistrado ? `${pedidoEditando.metodoPago ?? 'Registrado'} · ${pedidoEditando.fechaPago ? new Date(pedidoEditando.fechaPago).toLocaleString('es-PE') : ''}` : 'Pendiente'}</span>
+                  </p>
                 </div>
 
                 {/* Lista de Items a Entregar */}
@@ -342,25 +381,49 @@ export const GestionPedidos = () => {
                     value={nuevoEstado}
                     onChange={(e) => setNuevoEstado(e.target.value)}
                     className="w-full px-4 py-3 bg-input-background border border-input rounded-lg text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-ring"
-                    disabled={pedidoEditando.estadoRecojo === 'CANCELADO'} // Bloquear si ya fue cancelado
+                    disabled={pedidoEditando.estadoRecojo === 'CANCELADO' || Boolean(pedidoEditando.pagoRegistrado)}
                   >
                     <option value="PENDIENTE">Pendiente (Por Recoger)</option>
-                    <option value="RECOGIDO">Entregado / Completado</option>
+                    {pedidoEditando.estadoRecojo === 'RECOGIDO' && <option value="RECOGIDO">Entregado / Completado</option>}
                     {/* Solo permitimos cancelar si no estaba ya cancelado, para no confundir al usuario */}
                     {pedidoEditando.estadoRecojo !== 'RECOGIDO' && <option value="CANCELADO">Cancelar y devolver stock</option>}
                   </select>
-                  {pedidoEditando.estadoRecojo === 'CANCELADO' && (
+              {pedidoEditando.estadoRecojo === 'CANCELADO' && (
                     <p className="text-xs text-red-500 mt-2 font-medium">Este pedido fue anulado y el stock ya ha sido retornado al inventario. No se puede modificar.</p>
                   )}
+                  {pedidoEditando.pagoRegistrado && <p className="mt-2 text-xs font-medium text-muted-foreground">El pago está registrado y la entrega se completó. El estado quedó cerrado.</p>}
                 </div>
               </div>
             )}
 
             <div className="flex gap-3 mt-8">
               <Button variant="ghost" className="flex-1" onClick={() => setModalAbierto(false)}>Cerrar</Button>
-              <Button variant="accent" className="flex-1 font-bold" onClick={guardarCambios} disabled={pedidoEditando?.estadoRecojo === 'CANCELADO'}>
+              <Button variant="accent" className="flex-1 font-bold" onClick={guardarCambios} disabled={pedidoEditando?.estadoRecojo === 'CANCELADO' || Boolean(pedidoEditando?.pagoRegistrado)}>
                 Guardar Cambios
               </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={Boolean(pedidoPago)} onOpenChange={(open) => !open && setPedidoPago(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <Dialog.Title className="text-lg font-bold text-card-foreground">Confirmar pago presencial</Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm text-muted-foreground">Registra el pago realizado en el local. Al confirmarlo, el pedido quedará entregado y se habilitará su boleta.</Dialog.Description>
+            <div className="my-5 rounded-lg bg-muted p-4 text-sm">
+              <p className="flex justify-between"><span className="text-muted-foreground">Pedido</span><span className="font-semibold">#{pedidoPago?.idReserva}</span></p>
+              <p className="mt-2 flex justify-between"><span className="text-muted-foreground">Total a cobrar</span><span className="font-bold text-accent">{formatCurrency(pedidoPago?.montoTotal ?? 0)}</span></p>
+            </div>
+            <label className="block text-sm font-medium text-foreground">Método de pago
+              <select value={metodoPago} onChange={(event) => setMetodoPago(event.target.value)} className="mt-1 w-full rounded-lg border border-input bg-input-background px-3 py-2.5 text-foreground">
+                <option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta en el local</option><option value="TRANSFERENCIA">Transferencia</option><option value="YAPE">Yape</option><option value="PLIN">Plin</option><option value="BILLETERA_DIGITAL">Billetera digital</option><option value="OTRO">Otro</option>
+              </select>
+            </label>
+            <div className="mt-6 flex gap-3">
+              <Button variant="ghost" className="flex-1" onClick={() => setPedidoPago(null)}>Cancelar</Button>
+              <Button variant="accent" className="flex-1" onClick={registrarPagoPedido}>Confirmar pago</Button>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

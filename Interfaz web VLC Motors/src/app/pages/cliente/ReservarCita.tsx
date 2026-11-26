@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/button';
 import { Calendar, Clock, Wrench } from 'lucide-react';
@@ -15,6 +15,7 @@ interface Servicio {
 }
 
 export const ReservarCita = () => {
+  const campoFechaRef = useRef<HTMLInputElement>(null);
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [servicioSeleccionado, setServicioSeleccionado] = useState<number | null>(null);
   
@@ -167,10 +168,17 @@ export const ReservarCita = () => {
               <div>
                 <label className="block text-sm mb-2 text-foreground">Fecha</label>
                 <input
+                  ref={campoFechaRef}
                   type="date"
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  onClick={() => {
+                    const campoFecha = campoFechaRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+                    campoFecha?.showPicker?.();
+                  }}
+                  onKeyDown={(e) => e.preventDefault()}
+                  onPaste={(e) => e.preventDefault()}
+                  className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   min={(() => { const hoy = new Date(); return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`; })()}
                 />
               </div>

@@ -680,12 +680,12 @@ export const GestionUsuarios = () => {
                           id="telefono"
                           type="tel"
                           inputMode="numeric"
-                          maxLength={12}
+                          maxLength={9}
                           placeholder="Número telefónico"
                           className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
                           {...register('telefono', {
                             setValueAs: (value: string) => value.replace(/\D/g, ''),
-                            pattern: { value: /^\d{6,12}$/, message: 'Ingresa entre 6 y 12 dígitos' },
+                            pattern: { value: /^\d{6,9}$/, message: 'Ingresa entre 6 y 9 dígitos' },
                             validate: (value) => watch('codigoPais', '+51') !== '+51' || !value || /^9\d{8}$/.test(value) || 'Para Perú, ingresa un celular de 9 dígitos que empiece con 9',
                           })}
                         />

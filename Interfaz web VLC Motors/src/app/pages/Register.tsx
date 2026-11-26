@@ -324,15 +324,15 @@ export const RegisterPage = () => {
                           id="telefono"
                           type="tel"
                           inputMode="numeric"
-                          maxLength={12}
+                          maxLength={9}
                           placeholder={codigoPais === '+51' ? '987654321' : 'Número telefónico'}
                           className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
                           {...register('telefono', {
                             required: 'El número de teléfono es obligatorio',
                             setValueAs: (value: string) => value.replace(/\D/g, ''),
                             pattern: {
-                              value: /^\d{6,12}$/,
-                              message: 'Ingresa entre 6 y 12 dígitos',
+                              value: /^\d{6,9}$/,
+                              message: 'Ingresa entre 6 y 9 dígitos',
                             },
                             validate: (value) => codigoPais !== '+51' || /^9\d{8}$/.test(value) || 'Para Perú, ingresa un celular de 9 dígitos que empiece con 9',
                           })}

@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.example.dashboarvlc.models.enums.EstadoRecojo;
+import com.example.dashboarvlc.models.enums.MetodoPago;
 // NUEVA IMPORTACIÓN
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -27,6 +28,16 @@ public class OrdenCompra {
     private LocalDate fechaReserva;
 
     private LocalDateTime fechaPago; 
+
+    @Column(name = "pago_registrado")
+    private Boolean pagoRegistrado = false;
+
+    @Column(name = "monto_pagado")
+    private Double montoPagado;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_pago")
+    private MetodoPago metodoPago;
 
     @NotNull(message = "El monto total es obligatorio")
     @PositiveOrZero

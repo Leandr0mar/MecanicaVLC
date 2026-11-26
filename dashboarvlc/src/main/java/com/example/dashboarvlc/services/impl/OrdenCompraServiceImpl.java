@@ -11,6 +11,7 @@ import com.example.dashboarvlc.services.HistorialStockService;
 import com.example.dashboarvlc.services.OrdenCompraService;
 import com.example.dashboarvlc.dto.OrdenCompraDTO;
 import com.example.dashboarvlc.dto.ItemCompraDTO;
+import com.example.dashboarvlc.dto.RegistroPagoPedidoRequest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -42,6 +43,13 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
             return orden;
         }
 
+        if (orden.getEstadoRecojo() != EstadoRecojo.PENDIENTE) {
+            throw new IllegalArgumentException("Solo se puede cambiar el estado de un pedido pendiente");
+        }
+        if (nuevoEstado == EstadoRecojo.RECOGIDO && !Boolean.TRUE.equals(orden.getPagoRegistrado())) {
+            throw new IllegalArgumentException("Registra el pago presencial antes de entregar el pedido");
+        }
+
         // LÓGICA DE CANCELACIÓN: Devolver stock e historial
         if (nuevoEstado == EstadoRecojo.CANCELADO && orden.getEstadoRecojo() != EstadoRecojo.CANCELADO) {
             for (ItemsComprados item : orden.getItems()) {
@@ -64,11 +72,30 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         // Aplicar el nuevo estado
         orden.setEstadoRecojo(nuevoEstado);
         
-        // Si se recoge la compra, se marca la fecha de pago real
-        if (nuevoEstado == EstadoRecojo.RECOGIDO) {
-            orden.setFechaPago(java.time.LocalDateTime.now());
+        return ordenCompraRepository.save(orden);
+    }
+
+    @Override
+    @Transactional
+    public OrdenCompra registrarPago(Long id, RegistroPagoPedidoRequest pago, boolean administrador) {
+        if (!administrador) throw new IllegalArgumentException("Solo un administrador puede confirmar el pago presencial");
+        OrdenCompra orden = ordenCompraRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+        if (orden.getEstadoRecojo() != EstadoRecojo.PENDIENTE) {
+            throw new IllegalArgumentException("Solo se puede registrar el pago de pedidos pendientes");
+        }
+        if (Boolean.TRUE.equals(orden.getPagoRegistrado())) {
+            throw new IllegalArgumentException("El pago de este pedido ya fue registrado");
+        }
+        if (pago == null || pago.metodoPago() == null) {
+            throw new IllegalArgumentException("Selecciona el método de pago");
         }
 
+        orden.setMontoPagado(orden.getMontoTotal());
+        orden.setMetodoPago(pago.metodoPago());
+        orden.setFechaPago(java.time.LocalDateTime.now());
+        orden.setPagoRegistrado(true);
+        orden.setEstadoRecojo(EstadoRecojo.RECOGIDO);
         return ordenCompraRepository.save(orden);
     }
 
@@ -89,6 +116,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         OrdenCompra orden = new OrdenCompra();
         orden.setFechaReserva(LocalDate.now());
         orden.setEstadoRecojo(EstadoRecojo.PENDIENTE);
+        orden.setPagoRegistrado(false);
         orden.setCliente(cliente);
         orden.setTrabajador(trabajador);
         orden.setMontoTotal(0.0); // Se actualiza más abajo

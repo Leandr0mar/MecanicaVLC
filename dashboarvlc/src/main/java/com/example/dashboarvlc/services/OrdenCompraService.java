@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.example.dashboarvlc.dto.OrdenCompraDTO;
+import com.example.dashboarvlc.dto.RegistroPagoPedidoRequest;
 import com.example.dashboarvlc.models.OrdenCompra;
 import com.example.dashboarvlc.models.enums.EstadoRecojo;
 
@@ -12,6 +13,7 @@ public interface OrdenCompraService {
     Optional<OrdenCompra> buscarPorId(Long id);
     OrdenCompra guardar(OrdenCompra orden);
     OrdenCompra cambiarEstadoRecojo(Long id, EstadoRecojo nuevoEstado);
+    OrdenCompra registrarPago(Long id, RegistroPagoPedidoRequest pago, boolean administrador);
     OrdenCompra procesarCompra(OrdenCompraDTO dto, String emailUsuarioLogueado);
     List<OrdenCompra> listarMisOrdenes(String emailCliente);
 }
