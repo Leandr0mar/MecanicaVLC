@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.example.dashboarvlc.dto.ReseñaDTO;
+import com.example.dashboarvlc.dto.ReseñaTrabajadorPaginaDTO;
 import com.example.dashboarvlc.models.Reseña;
 
 public interface ReseñaService {
@@ -12,5 +13,5 @@ public interface ReseñaService {
     Reseña guardar(Reseña resenia);
     void eliminar(Long id);
     Reseña crearReseña(ReseñaDTO dto, String emailCliente);
-    List<Reseña> listarMisReseñas(String emailTrabajador);
+    ReseñaTrabajadorPaginaDTO listarPaginaMisReseñas(String emailTrabajador, int pagina, int tamano);
 }

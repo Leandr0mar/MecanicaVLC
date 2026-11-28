@@ -139,7 +139,7 @@ export const MisPedidos = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto">
+                      <div className="flex w-full flex-wrap flex-row items-center justify-between gap-x-2 gap-y-1 sm:w-auto sm:flex-col sm:items-end sm:text-right">
                         <p className="font-black text-accent text-lg mb-1">{formatCurrency(pedido.montoTotal)}</p>
                         <span className={`flex items-center gap-1 text-xs px-3 py-1 rounded-full font-bold ${ui.color}`}>
                           <StatusIcon size={14} />
@@ -181,7 +181,7 @@ export const MisPedidos = () => {
     <Dialog.Root open={Boolean(boletaPedido)} onOpenChange={(open) => !open && setBoletaPedido(null)}>
       <Dialog.Portal>
         <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-        <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl sm:p-7">
+        <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl sm:p-7">
           {boletaPedido && (() => {
             const { total, base, igv } = importesBoleta(boletaPedido);
             const cliente = boletaPedido.cliente;

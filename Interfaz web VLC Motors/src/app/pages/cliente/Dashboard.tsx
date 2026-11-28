@@ -49,7 +49,7 @@ export const ClienteDashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-dvh min-h-dvh min-w-0 bg-background">
       <div onClick={(e) => {
         const target = e.target as HTMLElement;
         const link = target.closest('a');
@@ -61,10 +61,10 @@ export const ClienteDashboard = () => {
         <Sidebar items={sidebarItems} />
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden w-full lg:w-auto">
+      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden lg:w-auto">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {renderView()}
         </main>
       </div>

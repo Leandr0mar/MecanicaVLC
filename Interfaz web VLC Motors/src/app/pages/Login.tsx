@@ -63,7 +63,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex relative">
+    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-background flex relative">
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
@@ -72,9 +72,9 @@ export const LoginPage = () => {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex-1 flex items-center justify-center p-8"
+        className="flex w-full min-w-0 flex-1 items-center justify-center p-4 sm:p-8"
       >
-        <div className="w-full max-w-lg">
+        <div className="mx-auto w-full min-w-0 max-w-lg">
           <div className="mb-8 text-center">
             <div className="inline-flex items-center gap-2 mb-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center shadow-lg">
@@ -85,7 +85,7 @@ export const LoginPage = () => {
             <p className="text-muted-foreground">Sistema de Gestión de Mecánica</p>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 shadow-xl">
             <h2 className="mb-6 text-center">Iniciar Sesión</h2>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -125,7 +125,7 @@ export const LoginPage = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex flex-col items-start gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="rounded accent-accent" {...register('recordarme')} />
                   <span className="text-foreground">Recordarme</span>
@@ -154,11 +154,11 @@ export const LoginPage = () => {
                   <p className="font-medium text-foreground mb-1">Cuentas de prueba:</p>
                   <div className="space-y-1">
                     {cuentasPrueba.map((cuenta) => (
-                      <div key={cuenta.email} className="flex min-w-0 items-center gap-2 border-b border-border/50 py-1 last:border-0">
+                      <div key={cuenta.email} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border/50 py-1 last:border-0 sm:flex-nowrap">
                         <p className="w-[76px] shrink-0 whitespace-nowrap">
                           {cuenta.rol}:
                         </p>
-                        <p className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap">
+                        <p className="order-3 basis-full min-w-0 overflow-x-auto whitespace-nowrap pl-[84px] sm:order-none sm:basis-auto sm:flex-1 sm:pl-0">
                           <span className="text-accent">{cuenta.email}</span>
                           <span className="px-1">/</span>
                           <span className="text-accent">{cuenta.password}</span>
@@ -167,7 +167,7 @@ export const LoginPage = () => {
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-9 shrink-0 px-3"
+                          className="order-2 ml-auto h-10 min-h-10 shrink-0 px-3 sm:order-none sm:ml-0"
                           onClick={() => completarCredenciales(cuenta.email, cuenta.password)}
                           aria-label={`Usar cuenta de ${cuenta.rol.replace(/^\p{Emoji_Presentation}\s*/u, '')}`}
                         >

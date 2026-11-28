@@ -2,6 +2,7 @@ package com.example.dashboarvlc.controllers.rest;
 
 import com.example.dashboarvlc.dto.ReseñaDTO;
 import com.example.dashboarvlc.models.Reseña;
+import com.example.dashboarvlc.dto.ReseñaTrabajadorPaginaDTO;
 import com.example.dashboarvlc.services.impl.ReseñaServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -41,10 +42,14 @@ public class ReseñaRestController {
     }
 
     @GetMapping("/mis-reseñas")
-    public ResponseEntity<List<Reseña>> listarMisReseñas(Principal principal) {
-        if (principal == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        return ResponseEntity.ok(reseñaService.listarMisReseñas(principal.getName()));
+    public ResponseEntity<ReseñaTrabajadorPaginaDTO> listarPaginaMisReseñas(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "10") int tamano,
+            Principal principal) {
+        if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        int paginaSegura = Math.max(0, pagina);
+        int tamanoSeguro = Math.max(1, Math.min(tamano, 50));
+        return ResponseEntity.ok(reseñaService.listarPaginaMisReseñas(
+                principal.getName(), paginaSegura, tamanoSeguro));
     }
 }

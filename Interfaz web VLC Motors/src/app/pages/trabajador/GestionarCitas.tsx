@@ -184,8 +184,8 @@ export const GestionarCitas = () => {
                 <Card hover>
                   <CardContent className="p-5 flex flex-col h-full">
                     {/* ENCABEZADO DE TARJETA */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
+                <div className="mb-4 flex flex-col items-start justify-between gap-2 sm:flex-row">
+                      <div className="min-w-0">
                         <h4 className="mb-1 text-card-foreground font-bold">{cita.servicio?.nombreServicio}</h4>
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4 text-xs text-muted-foreground mt-1">
                           <span className="flex items-center gap-1 font-medium">
@@ -198,7 +198,7 @@ export const GestionarCitas = () => {
                           </span>
                         </div>
                       </div>
-                      <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${config.colorClass}`}>
+                      <span className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${config.colorClass}`}>
                         <StatusIcon size={14} />
                         {config.label}
                       </span>
@@ -244,7 +244,7 @@ export const GestionarCitas = () => {
                             )}
                           </div>
                           {/* Botón rápido para abrir notas */}
-                          <button onClick={() => abrirModal(cita)} className="text-primary hover:text-accent p-1 transition-colors shrink-0" title="Editar observaciones">
+                          <button onClick={() => abrirModal(cita)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-primary transition-colors hover:text-accent" title="Editar observaciones" aria-label="Editar observaciones">
                             <Edit3 size={16} />
                           </button>
                         </div>
@@ -254,13 +254,13 @@ export const GestionarCitas = () => {
                     {/* BOTONES DE ACCIÓN */}
                     <div className="mt-4 pt-4 border-t border-border flex gap-2">
                       {estadoUpper === 'PENDIENTE' && (
-                        <Button variant="accent" size="sm" className="flex-1 font-semibold" onClick={() => cambiarEstadoCita(cita.idCita, 'EN_PROGRESO')}>
+                        <Button variant="accent" size="sm" className="min-h-11 flex-1 font-semibold" onClick={() => cambiarEstadoCita(cita.idCita, 'EN_PROGRESO')}>
                           Atender Cita
                         </Button>
                       )}
                       
                       {estadoUpper === 'EN_PROGRESO' && (
-                        <Button variant="secondary" size="sm" className="flex-1 font-semibold bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700" onClick={() => cambiarEstadoCita(cita.idCita, 'COMPLETADA')}>
+                        <Button variant="secondary" size="sm" className="min-h-11 flex-1 font-semibold bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700" onClick={() => cambiarEstadoCita(cita.idCita, 'COMPLETADA')}>
                           <CheckCircle size={15} className="mr-2" />
                           Terminar Servicio
                         </Button>
@@ -289,7 +289,7 @@ export const GestionarCitas = () => {
       <Dialog.Root open={modalAbierto} onOpenChange={setModalAbierto}>
         <Dialog.Portal>
           <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl z-50">
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 max-h-[90dvh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl z-50 sm:p-6">
             <Dialog.Title className="mb-2 text-card-foreground text-lg font-bold flex items-center gap-2">
               <FileText size={20} className="text-accent" />
               Observaciones del Servicio

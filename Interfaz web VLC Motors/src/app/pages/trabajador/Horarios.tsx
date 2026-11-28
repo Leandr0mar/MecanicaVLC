@@ -68,7 +68,7 @@ export const Horarios = () => {
                 </div>
 
                 {horario.activo && (
-                  <div className="grid grid-cols-2 gap-4 ml-8">
+                  <div className="ml-8 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                     <div>
                       <label className="block text-xs text-muted-foreground mb-1">Inicio</label>
                       <input

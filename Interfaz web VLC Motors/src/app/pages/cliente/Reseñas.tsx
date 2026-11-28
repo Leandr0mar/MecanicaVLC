@@ -120,7 +120,7 @@ export const Reseñas = () => {
                           <button
                             key={star}
                             onClick={() => handleCalificar(cita.idCita, star)}
-                            className="transition-transform hover:scale-110 p-1"
+                            className="flex min-h-11 min-w-11 items-center justify-center p-1 transition-transform hover:scale-110"
                           >
                             <Star
                               size={32}

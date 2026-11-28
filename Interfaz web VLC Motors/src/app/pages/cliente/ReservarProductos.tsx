@@ -255,8 +255,8 @@ export const ReservarProductos = () => {
 
                       <Button
                         variant="primary"
-                        size="sm"
-                        className="w-full mt-2 hover:bg-accent hover:text-accent-foreground hover:shadow-md"
+                        size="default"
+                        className="mt-2 min-h-11 w-full hover:bg-accent hover:text-accent-foreground hover:shadow-md"
                         onClick={() => agregarAlCarrito(producto.idProducto)}
                         disabled={producto.stock === 0}
                       >
@@ -272,7 +272,7 @@ export const ReservarProductos = () => {
 
         {/* --- PANEL DEL CARRITO --- */}
         <div>
-          <Card className="sticky top-6">
+          <Card className="lg:sticky lg:top-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart size={20} className="text-accent" />
@@ -313,14 +313,14 @@ export const ReservarProductos = () => {
                           <div className="flex items-center gap-2 mt-2 bg-background rounded border border-border p-1 w-fit">
                             <button
                               onClick={() => actualizarCantidad(item.idProducto, -1)}
-                              className="w-6 h-6 rounded flex items-center justify-center hover:bg-muted"
+                              className="flex h-10 w-10 items-center justify-center rounded hover:bg-muted"
                             >
                               <Minus size={12} />
                             </button>
                             <span className="w-6 text-center text-xs font-medium">{item.cantidad}</span>
                             <button
                               onClick={() => actualizarCantidad(item.idProducto, 1)}
-                              className="w-6 h-6 rounded flex items-center justify-center hover:bg-muted"
+                              className="flex h-10 w-10 items-center justify-center rounded hover:bg-muted"
                             >
                               <Plus size={12} />
                             </button>

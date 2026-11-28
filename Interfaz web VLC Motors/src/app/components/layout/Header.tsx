@@ -54,7 +54,7 @@ export const Header = ({ title }: HeaderProps) => {
           <User size={16} className="text-accent-foreground" />
         </div>
 
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="min-h-10 min-w-10 gap-2" aria-label="Cerrar sesión">
           <LogOut size={16} />
         </Button>
       </div>

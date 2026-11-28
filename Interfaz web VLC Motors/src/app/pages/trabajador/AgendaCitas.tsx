@@ -102,12 +102,12 @@ export const AgendaCitas = () => {
           <div className="lg:col-span-2">
             <Card className="h-full">
               <CardContent className="p-5">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-card-foreground flex items-center gap-2 font-bold">
+                <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                  <h3 className="flex min-w-0 items-center gap-2 font-bold text-card-foreground">
                     <Calendar className="text-accent" size={20} />
                     Citas para Hoy
                   </h3>
-                  <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                  <span className="rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground">
                     {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </span>
                 </div>
@@ -127,9 +127,9 @@ export const AgendaCitas = () => {
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                         className="p-4 bg-muted border border-border/50 rounded-lg hover:bg-muted/80 transition-colors"
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-bold text-foreground flex items-center gap-2">
+                        <div className="mb-2 flex flex-col items-start justify-between gap-2 sm:flex-row">
+                          <div className="min-w-0">
+                            <h4 className="flex items-start gap-2 break-words font-bold text-foreground">
                               <User size={16} className="text-accent" />
                               {cita.cliente?.nombre} {cita.cliente?.apellido}
                             </h4>

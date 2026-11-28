@@ -10,6 +10,10 @@ import com.example.dashboarvlc.repositories.ReseñaRepository;
 import com.example.dashboarvlc.repositories.CitaRepository;
 import com.example.dashboarvlc.services.ReseñaService;
 import com.example.dashboarvlc.dto.ReseñaDTO;
+import com.example.dashboarvlc.dto.ReseñaTrabajadorDTO;
+import com.example.dashboarvlc.dto.ReseñaTrabajadorFilaDTO;
+import com.example.dashboarvlc.dto.ReseñaTrabajadorPaginaDTO;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Optional;
@@ -57,11 +61,37 @@ public class ReseñaServiceImpl implements ReseñaService {
     
     @Override
     @Transactional(readOnly = true)
-    public List<Reseña> listarMisReseñas(String emailTrabajador) {
-        return reseñaRepository.findAll().stream()
-            .filter(r -> r.getCita() != null 
-                      && r.getCita().getTrabajador() != null 
-                      && r.getCita().getTrabajador().getEmail().equals(emailTrabajador))
-            .toList();
+    public ReseñaTrabajadorPaginaDTO listarPaginaMisReseñas(String emailTrabajador, int pagina, int tamano) {
+        var paginaReseñas = reseñaRepository.buscarPaginaTrabajador(
+                emailTrabajador, PageRequest.of(pagina, tamano));
+        var resumen = reseñaRepository.resumenCalificacionesTrabajador(emailTrabajador);
+        Object[] valoresResumen = resumen.isEmpty() ? new Object[]{0.0D, 0L} : resumen.get(0);
+        double promedio = valoresResumen[0] == null ? 0.0D : ((Number) valoresResumen[0]).doubleValue();
+
+        List<ReseñaTrabajadorDTO> contenido = paginaReseñas.getContent().stream()
+                .map(this::mapearReseñaTrabajador)
+                .toList();
+
+        return new ReseñaTrabajadorPaginaDTO(
+                contenido,
+                paginaReseñas.getNumber(),
+                paginaReseñas.getSize(),
+                paginaReseñas.getTotalElements(),
+                paginaReseñas.getTotalPages(),
+                promedio);
+    }
+
+    private ReseñaTrabajadorDTO mapearReseñaTrabajador(ReseñaTrabajadorFilaDTO reseña) {
+        return new ReseñaTrabajadorDTO(
+                reseña.idReseña(),
+                reseña.calificacion(),
+                reseña.comentario(),
+                reseña.fechaReseña(),
+                new ReseñaTrabajadorDTO.Cita(
+                        reseña.idCita(),
+                        reseña.fechaCita(),
+                        new ReseñaTrabajadorDTO.Cliente(
+                                reseña.nombreCliente(), reseña.apellidoCliente(), reseña.emailCliente(), reseña.telefonoCliente()),
+                        new ReseñaTrabajadorDTO.Servicio(reseña.nombreServicio())));
     }
 }

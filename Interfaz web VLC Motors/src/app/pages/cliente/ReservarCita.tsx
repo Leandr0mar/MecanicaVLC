@@ -132,9 +132,11 @@ export const ReservarCita = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
-                  <div
+                  <button
+                    type="button"
+                    aria-pressed={servicioSeleccionado === servicio.idServicio}
                     onClick={() => setServicioSeleccionado(servicio.idServicio)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                    className={`min-h-28 w-full rounded-lg border p-4 text-left transition-all duration-200 ${
                       servicioSeleccionado === servicio.idServicio
                         ? 'border-accent bg-accent/10 shadow-md'
                         : 'border-border hover:border-accent/50'
@@ -148,7 +150,7 @@ export const ReservarCita = () => {
                       </span>
                       <span className="text-accent font-semibold">{formatCurrency(servicio.precioInicial)}</span>
                     </div>
-                  </div>
+                  </button>
                   </motion.div>
                 ))}
               </div>
@@ -178,7 +180,7 @@ export const ReservarCita = () => {
                   }}
                   onKeyDown={(e) => e.preventDefault()}
                   onPaste={(e) => e.preventDefault()}
-                  className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  className="min-h-11 w-full rounded-lg border border-input bg-input-background px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   min={(() => { const hoy = new Date(); return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`; })()}
                 />
               </div>
@@ -189,7 +191,7 @@ export const ReservarCita = () => {
                   value={hora}
                   onChange={(e) => setHora(e.target.value)}
                   disabled={!servicioSeleccionado || !fecha || loadingHorarios || horariosDisponibles.length === 0}
-                  className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                  className="min-h-11 w-full rounded-lg border border-input bg-input-background px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 >
                   <option value="">
                     {!servicioSeleccionado ? 'Primero selecciona un servicio'

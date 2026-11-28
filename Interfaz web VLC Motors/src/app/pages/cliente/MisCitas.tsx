@@ -236,8 +236,8 @@ export const MisCitas = () => {
               >
                 <Card hover>
                   <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
+                    <div className="mb-4 flex flex-col items-start justify-between gap-2 sm:flex-row">
+                      <div className="min-w-0">
                         <h4 className="mb-1 text-card-foreground">
                           {cita.servicio?.nombreServicio || 'Servicio no especificado'}
                         </h4>
@@ -248,7 +248,7 @@ export const MisCitas = () => {
                             : 'Por asignar'}
                         </p>
                       </div>
-                      <span className={`flex max-w-[190px] items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${config.colorClass}`}>
+                      <span className={`flex max-w-full items-center gap-1 rounded-full px-3 py-1 text-xs font-medium sm:max-w-[190px] ${config.colorClass}`}>
                         <Icon size={14} />
                         <span>{config.label}</span>
                       </span>
@@ -288,7 +288,7 @@ export const MisCitas = () => {
                       <Button
                         variant="destructive"
                         size="sm"
-                        className="w-full mt-2"
+                        className="mt-2 min-h-11 w-full"
                         onClick={() => handleCancelar(cita.idCita)}
                       >
                         Cancelar Cita
@@ -306,7 +306,7 @@ export const MisCitas = () => {
     <Dialog.Root open={Boolean(boletaCita)} onOpenChange={(open) => !open && setBoletaCita(null)}>
       <Dialog.Portal>
         <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-        <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl sm:p-7">
+        <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl sm:p-7">
           {boletaCita && (() => {
             const { total, base, igv } = calcularImportes(boletaCita);
             const cliente = boletaCita.cliente;

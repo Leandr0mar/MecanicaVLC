@@ -56,6 +56,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                 .requestMatchers("/api/reportes/**").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reseñas").hasRole("ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reseñas/mis-reseñas/**").hasRole("TRABAJADOR")
                 .requestMatchers("/api/citas/mis-citas").hasRole("CLIENTE")
                 .requestMatchers("/api/citas/mis-tareas").hasRole("TRABAJADOR")
                 .requestMatchers("/api/citas/disponibilidad").hasRole("CLIENTE")

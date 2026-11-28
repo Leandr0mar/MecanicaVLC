@@ -79,7 +79,7 @@ export const Sidebar = ({ items, logo }: SidebarProps) => {
           stiffness: 200,
         }}
         className={clsx(
-          "w-64 bg-sidebar border-r border-sidebar-border flex flex-col h-screen",
+          "w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-dvh",
           isDesktop ? "relative" : "fixed",
           "top-0 left-0 z-40"
         )}

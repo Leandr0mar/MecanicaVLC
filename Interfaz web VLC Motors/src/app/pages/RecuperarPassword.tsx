@@ -31,7 +31,7 @@ export const RecuperarPasswordPage = () => {
 
   if (enviado) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-8 relative">
+      <div className="min-h-screen w-full min-w-0 bg-background flex items-center justify-center p-4 sm:p-8 relative">
         <div className="absolute top-4 right-4 z-50">
           <ThemeToggle />
         </div>
@@ -39,9 +39,9 @@ export const RecuperarPasswordPage = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md"
+          className="w-full min-w-0 max-w-md"
         >
-          <div className="bg-card border border-border rounded-2xl p-8 shadow-xl text-center">
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 shadow-xl text-center">
             <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={32} className="text-amber-500" />
             </div>
@@ -61,7 +61,7 @@ export const RecuperarPasswordPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-8 relative">
+    <div className="min-h-screen w-full min-w-0 bg-background flex items-center justify-center p-4 sm:p-8 relative">
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
@@ -70,7 +70,7 @@ export const RecuperarPasswordPage = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full min-w-0 max-w-md"
       >
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
@@ -84,7 +84,7 @@ export const RecuperarPasswordPage = () => {
           </p>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+        <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 shadow-xl">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="relative">
               <Mail size={18} className="absolute left-3 top-[42px] text-muted-foreground" />
