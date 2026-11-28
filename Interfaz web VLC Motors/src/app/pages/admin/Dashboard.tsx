@@ -28,12 +28,12 @@ export const AdminDashboard = () => {
     { name: 'Gestión de Usuarios', icon: Users, path: '/admin/usuarios' },
     { name: 'Servicios', icon: Wrench, path: '/admin/servicios' },
     { name: 'Productos', icon: Package, path: '/admin/productos' },
-    { name: 'Pedidos Web', icon: ShoppingBag, path: '/admin/pedidos' }, // <-- NUEVO ITEM
+    { name: 'Pedidos Web', icon: ShoppingBag, path: '/admin/pedidos' },
+    { name: 'Gestión de Citas', icon: Calendar, path: '/admin/citas' },
     { name: 'Ofertas', icon: Tag, path: '/admin/ofertas' },
     { name: 'Categorías', icon: Folder, path: '/admin/categorias' },
     { name: 'Proveedores', icon: Truck, path: '/admin/proveedores' },
     { name: 'Historial de Stock', icon: History, path: '/admin/historial' },
-    { name: 'Gestión de Citas', icon: Calendar, path: '/admin/citas' },
   ];
 
   // Sincronización automática de la URL con la vista actual

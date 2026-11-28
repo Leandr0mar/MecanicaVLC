@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { Header } from '../../components/layout/Header';
-import { CalendarCheck, Clock, Package, Star } from 'lucide-react';
+import { CalendarCheck, Clock, Star } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { AgendaCitas } from './AgendaCitas';
 import { GestionarCitas } from './GestionarCitas';
-import { Pedidos } from './Pedidos';
 import { Horarios } from './Horarios';
 import { ReseñasTrabajador } from './ReseñasTrabajador';
 
-type View = 'agenda' | 'gestionar' | 'pedidos' | 'horarios' | 'reseñas';
+type View = 'agenda' | 'gestionar' | 'horarios' | 'reseñas';
 
 export const TrabajadorDashboard = () => {
   const navigate = useNavigate();
@@ -18,14 +17,12 @@ export const TrabajadorDashboard = () => {
   const sidebarItems = [
     { name: 'Agenda de Citas', icon: CalendarCheck, path: '/trabajador' },
     { name: 'Gestionar Citas', icon: Clock, path: '/trabajador/gestionar' },
-    { name: 'Pedidos', icon: Package, path: '/trabajador/pedidos' },
     { name: 'Reseñas', icon: Star, path: '/trabajador/reseñas' },
   ];
 
   const handleNavigation = (path: string) => {
     if (path === '/trabajador') setCurrentView('agenda');
     else if (path === '/trabajador/gestionar') setCurrentView('gestionar');
-    else if (path === '/trabajador/pedidos') setCurrentView('pedidos');
     else if (path === '/trabajador/horarios') setCurrentView('horarios');
     else if (path === '/trabajador/reseñas') setCurrentView('reseñas');
   };
@@ -36,8 +33,6 @@ export const TrabajadorDashboard = () => {
         return <AgendaCitas />;
       case 'gestionar':
         return <GestionarCitas />;
-      case 'pedidos':
-        return <Pedidos />;
       case 'horarios':
         return <Horarios />;
       case 'reseñas':

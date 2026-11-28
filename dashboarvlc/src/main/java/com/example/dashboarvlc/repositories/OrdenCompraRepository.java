@@ -20,8 +20,7 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Long> 
             "where (:q = '' or lower(concat(cast(o.idReserva as string),' ',cast(o.fechaReserva as string),' ',coalesce(c.nombre,''),' ',coalesce(c.apellido,''),' ',coalesce(c.email,''),' ',coalesce(c.telefono,''),' ',cast(o.estadoRecojo as string))) like lower(concat('%',:q,'%')) " +
             "or exists (select i.idItemComprado from ItemsComprados i where i.ordenCompra = o and lower(coalesce(i.producto.nombre,'')) like lower(concat('%',:q,'%')))) " +
             "and (:estado = '' or cast(o.estadoRecojo as string) = :estado) " +
-            "order by case when o.estadoRecojo = com.example.dashboarvlc.models.enums.EstadoRecojo.PENDIENTE then 0 " +
-            "when o.estadoRecojo = com.example.dashboarvlc.models.enums.EstadoRecojo.RECOGIDO then 1 else 2 end, o.idReserva desc",
+            "order by o.fechaReserva desc, o.idReserva desc",
             countQuery = "select count(o) from OrdenCompra o left join o.cliente c " +
                     "where (:q = '' or lower(concat(cast(o.idReserva as string),' ',cast(o.fechaReserva as string),' ',coalesce(c.nombre,''),' ',coalesce(c.apellido,''),' ',coalesce(c.email,''),' ',coalesce(c.telefono,''),' ',cast(o.estadoRecojo as string))) like lower(concat('%',:q,'%')) " +
                     "or exists (select i.idItemComprado from ItemsComprados i where i.ordenCompra = o and lower(coalesce(i.producto.nombre,'')) like lower(concat('%',:q,'%')))) " +
@@ -38,8 +37,7 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Long> 
             "where (:q = '' or lower(concat(cast(o.idReserva as string),' ',cast(o.fechaReserva as string),' ',coalesce(c.nombre,''),' ',coalesce(c.apellido,''),' ',coalesce(c.email,''),' ',coalesce(c.telefono,''),' ',cast(o.estadoRecojo as string))) like lower(concat('%',:q,'%')) " +
             "or exists (select i.idItemComprado from ItemsComprados i where i.ordenCompra = o and lower(coalesce(i.producto.nombre,'')) like lower(concat('%',:q,'%')))) " +
             "and (:estado = '' or cast(o.estadoRecojo as string) = :estado) " +
-            "order by case when o.estadoRecojo = com.example.dashboarvlc.models.enums.EstadoRecojo.PENDIENTE then 0 " +
-            "when o.estadoRecojo = com.example.dashboarvlc.models.enums.EstadoRecojo.RECOGIDO then 1 else 2 end, o.idReserva desc",
+            "order by o.fechaReserva desc, o.idReserva desc",
             countQuery = "select count(o) from OrdenCompra o left join o.cliente c " +
                     "where (:q = '' or lower(concat(cast(o.idReserva as string),' ',cast(o.fechaReserva as string),' ',coalesce(c.nombre,''),' ',coalesce(c.apellido,''),' ',coalesce(c.email,''),' ',coalesce(c.telefono,''),' ',cast(o.estadoRecojo as string))) like lower(concat('%',:q,'%')) " +
                     "or exists (select i.idItemComprado from ItemsComprados i where i.ordenCompra = o and lower(coalesce(i.producto.nombre,'')) like lower(concat('%',:q,'%')))) " +

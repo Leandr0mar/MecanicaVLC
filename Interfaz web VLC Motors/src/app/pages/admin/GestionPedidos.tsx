@@ -78,9 +78,9 @@ export const GestionPedidos = () => {
       const data = pageData.contenido ?? [];
       setTotalPaginas(pageData.totalPaginas ?? 0);
       setTotalPedidos(pageData.totalElementos ?? 0);
-      const prioridad = (estado: string) => ({ PENDIENTE: 0, RECOGIDO: 1, CANCELADO: 2 }[estado?.toUpperCase()] ?? 3);
       const ordenadas = data.sort((a: Pedido, b: Pedido) =>
-        prioridad(a.estadoRecojo) - prioridad(b.estadoRecojo) || b.idReserva - a.idReserva
+        new Date(`${b.fechaReserva}T00:00:00`).getTime() - new Date(`${a.fechaReserva}T00:00:00`).getTime()
+        || b.idReserva - a.idReserva
       );
       setPedidos(ordenadas);
     } catch (error) {
@@ -409,13 +409,28 @@ export const GestionPedidos = () => {
       <Dialog.Root open={Boolean(pedidoPago)} onOpenChange={(open) => !open && setPedidoPago(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 duration-200 fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl">
+          <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 duration-200 fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl sm:p-6">
             <Dialog.Title className="text-lg font-bold text-card-foreground">Confirmar pago presencial</Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-muted-foreground">Registra el pago realizado en el local. Al confirmarlo, el pedido quedará entregado y se habilitará su boleta.</Dialog.Description>
-            <div className="my-5 rounded-lg bg-muted p-4 text-sm">
-              <p className="flex justify-between"><span className="text-muted-foreground">Pedido</span><span className="font-semibold">#{pedidoPago?.idReserva}</span></p>
-              <p className="mt-2 flex justify-between"><span className="text-muted-foreground">Total a cobrar</span><span className="font-bold text-accent">{formatCurrency(pedidoPago?.montoTotal ?? 0)}</span></p>
-            </div>
+            <Dialog.Description className="mt-1 text-sm text-muted-foreground">Verifica el resumen de compra y registra el pago. Al confirmarlo, el pedido quedará entregado y se habilitará su boleta.</Dialog.Description>
+            {pedidoPago && <div className="my-5 space-y-4">
+              <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm">
+                <p className="flex justify-between gap-3"><span className="text-muted-foreground">Pedido</span><span className="font-semibold text-foreground">#{pedidoPago.idReserva}</span></p>
+                <p className="mt-2 flex justify-between gap-3"><span className="text-muted-foreground">Cliente</span><span className="text-right font-medium text-foreground">{pedidoPago.cliente?.nombre} {pedidoPago.cliente?.apellido}</span></p>
+                <p className="mt-2 flex justify-between gap-3"><span className="text-muted-foreground">Fecha de compra</span><span className="font-medium text-foreground">{new Date(pedidoPago.fechaReserva + 'T00:00:00').toLocaleDateString('es-PE')}</span></p>
+              </div>
+              <section>
+                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"><FileText size={15} className="text-accent" /> Resumen de la compra</h3>
+                <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border bg-background p-2">
+                  {pedidoPago.items?.length ? pedidoPago.items.map((item) => (
+                    <div key={item.idItemComprado} className="flex items-center justify-between gap-3 rounded border border-border/50 bg-muted/30 p-2 text-sm">
+                      <span className="min-w-0 text-foreground"><span className="mr-2 rounded bg-accent/10 px-1.5 py-0.5 font-black text-accent">×{item.cantidad}</span>{item.producto?.nombre}</span>
+                      <span className="shrink-0 font-mono text-muted-foreground">{formatCurrency(item.precioUnitarioHistorial * item.cantidad)}</span>
+                    </div>
+                  )) : <p className="p-2 text-sm text-muted-foreground">No hay productos en este pedido.</p>}
+                </div>
+                <div className="mt-2 flex justify-between gap-3 text-sm"><span className="text-muted-foreground">{pedidoPago.items?.length ?? 0} productos</span><span className="text-lg font-black text-accent">Total a cobrar: {formatCurrency(pedidoPago.montoTotal ?? 0)}</span></div>
+              </section>
+            </div>}
             <label className="block text-sm font-medium text-foreground">Método de pago
               <select value={metodoPago} onChange={(event) => setMetodoPago(event.target.value)} className="mt-1 w-full rounded-lg border border-input bg-input-background px-3 py-2.5 text-foreground">
                 <option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta en el local</option><option value="TRANSFERENCIA">Transferencia</option><option value="YAPE">Yape</option><option value="PLIN">Plin</option><option value="BILLETERA_DIGITAL">Billetera digital</option><option value="OTRO">Otro</option>
